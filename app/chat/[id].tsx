@@ -1,0 +1,315 @@
+// Sadhna Health Care — Chat Conversation Screen
+import React, { useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Avatar } from '@/src/components/ui/Avatar';
+import { RoleBadge } from '@/src/components/ui/RoleBadge';
+import { useThemeColors } from '@/src/hooks/useTheme';
+import { useAuthStore } from '@/src/store/authStore';
+import { mockConversations } from '@/src/data/mockData';
+import { Message } from '@/src/types';
+import { formatTime } from '@/src/utils/helpers';
+import { FontSize, Spacing, Radius } from '@/src/utils/constants';
+
+// Expanded mock messages for the conversation
+const generateMockMessages = (conversationId: string, userId: string): Message[] => {
+  const conv = mockConversations.find((c) => c.id === conversationId);
+  if (!conv) return [];
+  const other = conv.participants.find((p) => p.id !== userId) || conv.participants[0];
+
+  return [
+    {
+      id: 'm10',
+      conversation_id: conversationId,
+      sender_id: other.id,
+      sender: other,
+      content: 'Hello! How are you feeling today?',
+      media_url: null,
+      message_type: 'text',
+      created_at: '2024-06-13T09:00:00Z',
+    },
+    {
+      id: 'm11',
+      conversation_id: conversationId,
+      sender_id: userId,
+      sender: conv.participants.find((p) => p.id === userId) || conv.participants[0],
+      content: 'Hi! I\'m doing much better, thank you for checking in 😊',
+      media_url: null,
+      message_type: 'text',
+      created_at: '2024-06-13T09:05:00Z',
+    },
+    {
+      id: 'm12',
+      conversation_id: conversationId,
+      sender_id: other.id,
+      sender: other,
+      content: 'That\'s great to hear! Have you been following the prescribed diet plan?',
+      media_url: null,
+      message_type: 'text',
+      created_at: '2024-06-13T09:10:00Z',
+    },
+    {
+      id: 'm13',
+      conversation_id: conversationId,
+      sender_id: userId,
+      sender: conv.participants.find((p) => p.id === userId) || conv.participants[0],
+      content: 'Yes, I\'ve been very strict with it. My blood sugar levels have been stable.',
+      media_url: null,
+      message_type: 'text',
+      created_at: '2024-06-13T09:15:00Z',
+    },
+    {
+      id: 'm14',
+      conversation_id: conversationId,
+      sender_id: other.id,
+      sender: other,
+      content: 'Excellent! Keep it up. Let me know if you need anything before our next appointment.',
+      media_url: null,
+      message_type: 'text',
+      created_at: '2024-06-13T09:30:00Z',
+    },
+    ...(conv.last_message ? [conv.last_message] : []),
+  ];
+};
+
+export default function ChatScreen() {
+  const colors = useThemeColors();
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const user = useAuthStore((s) => s.user);
+  const [messageText, setMessageText] = useState('');
+  const flatListRef = useRef<FlatList>(null);
+
+  const conversation = mockConversations.find((c) => c.id === id);
+  const otherUser = conversation?.participants.find((p) => p.id !== user?.id) || conversation?.participants[0];
+  
+  const [messages, setMessages] = useState<Message[]>(
+    generateMockMessages(id || '', user?.id || '')
+  );
+
+  const sendMessage = () => {
+    if (!messageText.trim() || !user) return;
+    const newMsg: Message = {
+      id: `m_${Date.now()}`,
+      conversation_id: id || '',
+      sender_id: user.id,
+      sender: user,
+      content: messageText.trim(),
+      media_url: null,
+      message_type: 'text',
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, newMsg]);
+    setMessageText('');
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+  };
+
+  const renderMessage = ({ item }: { item: Message }) => {
+    const isMe = item.sender_id === user?.id;
+
+    return (
+      <View style={[styles.messageRow, isMe && styles.messageRowMe]}>
+        {!isMe && (
+          <Avatar uri={item.sender.avatar_url} name={item.sender.full_name} size={32} />
+        )}
+        <View
+          style={[
+            styles.messageBubble,
+            isMe
+              ? [styles.bubbleMe, { backgroundColor: colors.primary }]
+              : [styles.bubbleOther, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }],
+          ]}
+        >
+          <Text style={[styles.messageText, { color: isMe ? '#FFF' : colors.text }]}>
+            {item.content}
+          </Text>
+          <Text style={[styles.messageTime, { color: isMe ? 'rgba(255,255,255,0.7)' : colors.textTertiary }]}>
+            {formatTime(item.created_at)}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  if (!otherUser) return null;
+
+  return (
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* Chat Header */}
+      <View style={[styles.header, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.headerUser} onPress={() => router.push(`/user/${otherUser.id}` as any)}>
+          <Avatar uri={otherUser.avatar_url} name={otherUser.full_name} size={40} showOnline isOnline={otherUser.is_online} />
+          <View style={styles.headerUserInfo}>
+            <View style={styles.headerNameRow}>
+              <Text style={[styles.headerName, { color: colors.text }]}>{otherUser.full_name}</Text>
+              <RoleBadge role={otherUser.role} size="sm" showLabel={false} />
+            </View>
+            <Text style={[styles.headerStatus, { color: otherUser.is_online ? colors.success : colors.textTertiary }]}>
+              {otherUser.is_online ? 'Online' : 'Offline'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.callBtn}>
+          <Ionicons name="videocam-outline" size={22} color={colors.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.callBtn}>
+          <Ionicons name="call-outline" size={22} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Messages */}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
+      >
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.messagesList}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+        />
+
+        {/* Input Bar */}
+        <View style={[styles.inputBar, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
+          <TouchableOpacity style={styles.attachButton}>
+            <Ionicons name="add-circle-outline" size={26} color={colors.primary} />
+          </TouchableOpacity>
+          <View style={[styles.inputContainer, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+            <TextInput
+              style={[styles.input, { color: colors.text }]}
+              placeholder="Type a message..."
+              placeholderTextColor={colors.textTertiary}
+              value={messageText}
+              onChangeText={setMessageText}
+              multiline
+              maxLength={500}
+            />
+            <TouchableOpacity style={styles.emojiButton}>
+              <Ionicons name="happy-outline" size={22} color={colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={[styles.sendButton, { backgroundColor: messageText.trim() ? colors.primary : colors.surfaceSecondary }]}
+            onPress={sendMessage}
+            disabled={!messageText.trim()}
+          >
+            <Ionicons name="send" size={18} color={messageText.trim() ? '#FFF' : colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1 },
+  flex: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+  },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerUser: { flex: 1, flexDirection: 'row', alignItems: 'center', marginLeft: 4 },
+  headerUserInfo: { marginLeft: Spacing.sm },
+  headerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerName: { fontSize: FontSize.base, fontWeight: '700' },
+  headerStatus: { fontSize: FontSize.xs },
+  callBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  messagesList: {
+    padding: Spacing.base,
+    paddingBottom: Spacing.sm,
+  },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: Spacing.md,
+    gap: 8,
+  },
+  messageRowMe: {
+    justifyContent: 'flex-end',
+  },
+  messageBubble: {
+    maxWidth: '75%',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+  },
+  bubbleMe: {
+    borderBottomRightRadius: 4,
+  },
+  bubbleOther: {
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+  },
+  messageText: {
+    fontSize: FontSize.base,
+    lineHeight: 20,
+  },
+  messageTime: {
+    fontSize: 10,
+    marginTop: 4,
+    textAlign: 'right',
+  },
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    borderTopWidth: 1,
+    gap: 8,
+  },
+  attachButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    borderRadius: 22,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    maxHeight: 100,
+  },
+  input: {
+    flex: 1,
+    fontSize: FontSize.base,
+    paddingVertical: 6,
+  },
+  emojiButton: {
+    padding: 4,
+    marginLeft: 4,
+    marginBottom: 2,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
