@@ -23,6 +23,7 @@ import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
 import { LanguagePicker } from '@/src/components/ui/LanguagePicker';
 import { Profile } from '@/src/types';
+import { ApiService } from '@/src/services/api';
 import { SPECIALIZATIONS, FontSize, Spacing, Radius } from '@/src/utils/constants';
 
 export default function ProfileSetupScreen() {
@@ -138,12 +139,31 @@ export default function ProfileSetupScreen() {
       profileDetails = {
         ...profileDetails,
         patient_id_card_number: patientIdCard.trim(),
-        bio: `${chronicCondition.trim()} manager. ${bio.trim()}`,
+        chronic_condition: chronicCondition.trim(),
       };
     }
 
     try {
       await completeProfile(profileDetails);
+
+      // Persist the optional emergency contact as the patient's first SOS contact
+      // so the information entered during onboarding is not silently discarded.
+      if (user.role === 'patient' && emergencyName.trim() && emergencyPhone.trim()) {
+        try {
+          await ApiService.saveSosContacts(user.id, [
+            {
+              id: `sos_${Date.now()}`,
+              name: emergencyName.trim(),
+              relation: 'Emergency Contact',
+              phone: emergencyPhone.trim(),
+            },
+          ]);
+        } catch (e) {
+          // Best-effort: never block onboarding completion on the SOS save.
+          console.warn('Failed to save emergency contact during setup:', e);
+        }
+      }
+
       Alert.alert('Profile Setup Complete! 🎉', 'Your profile setup has been completed successfully.', [
         { text: 'Enter App', onPress: () => router.replace('/(tabs)') },
       ]);

@@ -26,6 +26,7 @@ export interface Profile {
   relation_to_patient?: string | null;
   associated_patient_username?: string | null;
   patient_id_card_number?: string | null;
+  chronic_condition?: string | null;
 }
 
 // ─── Post ─────────────────────────────────────────────────────

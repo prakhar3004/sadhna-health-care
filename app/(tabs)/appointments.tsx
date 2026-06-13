@@ -1,5 +1,5 @@
 // Sadhna Health Care — Appointments Screen
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,8 @@ import { Card } from '@/src/components/ui/Card';
 import { useThemeColors } from '@/src/hooks/useTheme';
 import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
-import { mockAppointments } from '@/src/data/mockData';
+import { AppointmentsService } from '@/src/services/appointmentsService';
+import { Appointment } from '@/src/types';
 import { formatAppointmentDate, formatTime } from '@/src/utils/helpers';
 import { FontSize, Spacing, Radius } from '@/src/utils/constants';
 
@@ -249,6 +250,20 @@ export default function AppointmentsScreen() {
   const user = useAuthStore((s) => s.user);
   const { language, t } = useLanguageStore();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
+
+  const loadAppointments = useCallback(async () => {
+    if (!user) return;
+    try {
+      setAllAppointments(await AppointmentsService.fetchAppointments(user.id));
+    } catch (e) {
+      console.warn('Failed to load appointments:', e);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
 
   const trans = APPOINTMENT_TRANS[language] || APPOINTMENT_TRANS['en'];
 
@@ -278,12 +293,12 @@ export default function AppointmentsScreen() {
     return maps[language]?.[spec] || maps['en']?.[spec] || spec;
   };
 
-  const appointments = mockAppointments.filter((apt) => {
+  const appointments = allAppointments.filter((apt) => {
     if (activeTab === 'upcoming') return apt.status === 'pending' || apt.status === 'confirmed';
     return apt.status === 'completed' || apt.status === 'cancelled';
   });
 
-  const renderAppointment = ({ item }: { item: typeof mockAppointments[0] }) => {
+  const renderAppointment = ({ item }: { item: Appointment }) => {
     const statusConfig = STATUS_CONFIG[item.status];
     const isDoctor = user?.role === 'doctor';
     const otherPerson = isDoctor ? item.patient : item.doctor;

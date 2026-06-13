@@ -1,11 +1,12 @@
 // Sadhna Health Care — Messages Screen
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -15,7 +16,8 @@ import { RoleBadge } from '@/src/components/ui/RoleBadge';
 import { useThemeColors } from '@/src/hooks/useTheme';
 import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
-import { mockConversations } from '@/src/data/mockData';
+import { ChatService } from '@/src/services/chatService';
+import { Conversation } from '@/src/types';
 import { formatRelativeTime, truncateText } from '@/src/utils/helpers';
 import { FontSize, Spacing, Radius } from '@/src/utils/constants';
 
@@ -90,7 +92,29 @@ export default function MessagesScreen() {
 
   const trans = MESSAGES_TRANS[language] || MESSAGES_TRANS['en'];
 
-  const renderConversation = ({ item }: { item: typeof mockConversations[0] }) => {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!user) return;
+    try {
+      setConversations(await ChatService.fetchConversations(user.id));
+    } catch (e) {
+      console.warn('Failed to load conversations:', e);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
+  const renderConversation = ({ item }: { item: Conversation }) => {
     const otherUser = item.participants.find((p) => p.id !== user?.id) || item.participants[0];
     const hasUnread = item.unread_count > 0;
 
@@ -166,7 +190,7 @@ export default function MessagesScreen() {
         <Text style={[styles.onlineTitle, { color: colors.textTertiary }]}>{trans.online_now}</Text>
         <FlatList
           horizontal
-          data={mockConversations.map((c) => c.participants.find((p) => p.id !== user?.id) || c.participants[0]).filter(p => p.is_online)}
+          data={conversations.map((c) => c.participants.find((p) => p.id !== user?.id) || c.participants[0]).filter((p) => p && p.is_online)}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.onlineItem}>
               <Avatar uri={item.avatar_url} name={item.full_name} size={44} showOnline isOnline />
@@ -183,11 +207,14 @@ export default function MessagesScreen() {
 
       {/* Conversations */}
       <FlatList
-        data={mockConversations}
+        data={conversations}
         renderItem={renderConversation}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.conversationsList}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
+        }
         ItemSeparatorComponent={() => (
           <View style={[styles.separator, { backgroundColor: colors.divider }]} />
         )}

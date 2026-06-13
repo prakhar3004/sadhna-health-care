@@ -1,14 +1,35 @@
 // Sadhna Health Care — Tab Layout
-import React from 'react';
-import { Tabs } from 'expo-router';
+import React, { useState, useEffect } from 'react';
+import { Tabs, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useThemeColors } from '@/src/hooks/useTheme';
 import { useLanguageStore } from '@/src/store/languageStore';
+import { useAuthStore } from '@/src/store/authStore';
+import { ChatService } from '@/src/services/chatService';
+import { ScreenLoader } from '@/src/components/ui/ScreenLoader';
 
 export default function TabLayout() {
   const colors = useThemeColors();
   const { language } = useLanguageStore();
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isLoading = useAuthStore((s) => s.isLoading);
+
+  // Total unread messages, driven by the same source as the Messages screen.
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    ChatService.fetchConversations(user.id)
+      .then((convs) => {
+        if (active) setUnreadMessages(convs.reduce((sum, c) => sum + (c.unread_count || 0), 0));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
 
   const getTabTitle = (tab: 'home' | 'discover' | 'visits' | 'messages' | 'profile') => {
     const maps: Record<string, Record<string, string>> = {
@@ -27,6 +48,13 @@ export default function TabLayout() {
     };
     return maps[language]?.[tab] || maps['en']?.[tab];
   };
+
+  // ─── Auth guard (protects the entire tabs group, reactively) ──
+  // Runs on every render, so a sign-out / token expiry that flips the auth
+  // store immediately bounces the user out of the protected area.
+  if (isLoading) return <ScreenLoader />;
+  if (!isAuthenticated) return <Redirect href="/(auth)/login" />;
+  if (user && !user.is_profile_complete) return <Redirect href="/(auth)/profile-setup" />;
 
   return (
     <Tabs
@@ -104,10 +132,14 @@ export default function TabLayout() {
                 size={24}
                 color={color}
               />
-              {/* Unread badge */}
-              <View style={[styles.badge, { backgroundColor: '#EF4444' }]}>
-                <View style={styles.badgeDot} />
-              </View>
+              {/* Unread badge — only shown when there are unread messages */}
+              {unreadMessages > 0 && (
+                <View style={[styles.badge, { backgroundColor: colors.error }]}>
+                  <Text style={styles.badgeText}>
+                    {unreadMessages > 9 ? '9+' : unreadMessages}
+                  </Text>
+                </View>
+              )}
             </View>
           ),
         }}
@@ -132,18 +164,19 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
-    top: -2,
-    right: -6,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    top: -4,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFF',
+  badgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '700',
+    lineHeight: 12,
   },
 });

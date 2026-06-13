@@ -1,5 +1,5 @@
 // Sadhna Health Care — Discover/Search Screen
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,9 @@ import { Avatar } from '@/src/components/ui/Avatar';
 import { RoleBadge } from '@/src/components/ui/RoleBadge';
 import { useThemeColors } from '@/src/hooks/useTheme';
 import { useLanguageStore } from '@/src/store/languageStore';
-import { mockProfiles } from '@/src/data/mockData';
+import { useAuthStore } from '@/src/store/authStore';
+import { PeopleService } from '@/src/services/peopleService';
+import { Profile } from '@/src/types';
 import { UserRole, FontSize, Spacing, Radius } from '@/src/utils/constants';
 import { formatCount } from '@/src/utils/helpers';
 
@@ -170,10 +172,29 @@ export default function SearchScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { language } = useLanguageStore();
+  const user = useAuthStore((s) => s.user);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<UserRole | 'all'>('all');
+  const [results, setResults] = useState<Profile[]>([]);
 
   const trans = SEARCH_TRANS[language] || SEARCH_TRANS['en'];
+
+  // Debounced search — runs server-side in live mode, on mock data in demo mode.
+  useEffect(() => {
+    let active = true;
+    const handle = setTimeout(async () => {
+      try {
+        const found = await PeopleService.search(searchQuery, activeFilter, user?.id);
+        if (active) setResults(found);
+      } catch (e) {
+        console.warn('Search failed:', e);
+      }
+    }, 250);
+    return () => {
+      active = false;
+      clearTimeout(handle);
+    };
+  }, [searchQuery, activeFilter, user?.id]);
 
   const translateSpecialization = (spec: string) => {
     if (!spec) return '';
@@ -194,16 +215,7 @@ export default function SearchScreen() {
     return maps[language]?.[spec] || maps['en']?.[spec] || spec;
   };
 
-  const filteredProfiles = mockProfiles.filter((profile) => {
-    const matchesSearch =
-      profile.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      profile.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (profile.specialization?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-    const matchesFilter = activeFilter === 'all' || profile.role === activeFilter;
-    return matchesSearch && matchesFilter;
-  });
-
-  const renderProfileCard = ({ item }: { item: typeof mockProfiles[0] }) => (
+  const renderProfileCard = ({ item }: { item: Profile }) => (
     <TouchableOpacity
       style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}
       onPress={() => router.push(`/user/${item.id}` as any)}
@@ -295,7 +307,7 @@ export default function SearchScreen() {
 
       {/* Results */}
       <FlatList
-        data={filteredProfiles}
+        data={results}
         renderItem={renderProfileCard}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
@@ -310,7 +322,7 @@ export default function SearchScreen() {
         }
         ListHeaderComponent={
           <Text style={[styles.resultCount, { color: colors.textTertiary }]}>
-            {filteredProfiles.length} {filteredProfiles.length === 1 ? trans.result : trans.results}
+            {results.length} {results.length === 1 ? trans.result : trans.results}
           </Text>
         }
       />

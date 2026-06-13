@@ -1381,21 +1381,15 @@ export function PatientDashboard() {
       }
 
       if (activeRequestForDonation) {
-        // Specific emergency request donation
-        const updatedRequests = emergencyRequests.map(r => {
-          if (r.id === activeRequestForDonation.id) {
-            const newRaised = Math.min(r.requiredAmount, r.raisedAmount + amt);
-            return { ...r, raisedAmount: newRaised };
-          }
-          return r;
-        });
-        setEmergencyRequests(updatedRequests);
-        await ApiService.saveEmergencyRequests(user?.id || 'demo_patient', updatedRequests);
-
-        // Also increment general contributors count slightly
-        const newContrib = sevaPoolContributors + 1;
-        setSevaPoolContributors(newContrib);
-        await ApiService.updateSevaPool(sevaPoolAmount, newContrib);
+        // Specific emergency request donation (atomic, server-authoritative).
+        const { requests, pool } = await ApiService.donateToRequest(
+          activeRequestForDonation.id,
+          amt,
+          emergencyRequests
+        );
+        setEmergencyRequests(requests);
+        setSevaPoolAmount(pool.amount);
+        setSevaPoolContributors(pool.contributors);
 
         const successDesc = getUiText('seva_donation_success_desc').replace('{amount}', amt.toString());
         Alert.alert(
@@ -1403,13 +1397,10 @@ export function PatientDashboard() {
           successDesc
         );
       } else {
-        // General Pool donation
-        const newAmount = sevaPoolAmount + amt;
-        const newContrib = sevaPoolContributors + 1;
-        setSevaPoolAmount(newAmount);
-        setSevaPoolContributors(newContrib);
-        
-        await ApiService.updateSevaPool(newAmount, newContrib);
+        // General Seva pool donation (atomic, server-authoritative).
+        const pool = await ApiService.donateToPool(amt);
+        setSevaPoolAmount(pool.amount);
+        setSevaPoolContributors(pool.contributors);
 
         const successDesc = getUiText('seva_donation_success_desc').replace('{amount}', amt.toString());
         Alert.alert(
@@ -1474,7 +1465,7 @@ export function PatientDashboard() {
     setEmergencyRequests(updated);
 
     try {
-      await ApiService.saveEmergencyRequests(user?.id || 'demo_patient', updated);
+      await ApiService.addEmergencyRequest(user?.id || 'demo_patient', newRequest, updated);
     } catch (e) {
       console.warn('Failed to save emergency request:', e);
     }

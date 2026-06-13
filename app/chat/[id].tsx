@@ -1,5 +1,5 @@
 // Sadhna Health Care — Chat Conversation Screen
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,71 +17,10 @@ import { Avatar } from '@/src/components/ui/Avatar';
 import { RoleBadge } from '@/src/components/ui/RoleBadge';
 import { useThemeColors } from '@/src/hooks/useTheme';
 import { useAuthStore } from '@/src/store/authStore';
-import { mockConversations } from '@/src/data/mockData';
-import { Message } from '@/src/types';
+import { ChatService } from '@/src/services/chatService';
+import { Conversation, Message } from '@/src/types';
 import { formatTime } from '@/src/utils/helpers';
 import { FontSize, Spacing, Radius } from '@/src/utils/constants';
-
-// Expanded mock messages for the conversation
-const generateMockMessages = (conversationId: string, userId: string): Message[] => {
-  const conv = mockConversations.find((c) => c.id === conversationId);
-  if (!conv) return [];
-  const other = conv.participants.find((p) => p.id !== userId) || conv.participants[0];
-
-  return [
-    {
-      id: 'm10',
-      conversation_id: conversationId,
-      sender_id: other.id,
-      sender: other,
-      content: 'Hello! How are you feeling today?',
-      media_url: null,
-      message_type: 'text',
-      created_at: '2024-06-13T09:00:00Z',
-    },
-    {
-      id: 'm11',
-      conversation_id: conversationId,
-      sender_id: userId,
-      sender: conv.participants.find((p) => p.id === userId) || conv.participants[0],
-      content: 'Hi! I\'m doing much better, thank you for checking in 😊',
-      media_url: null,
-      message_type: 'text',
-      created_at: '2024-06-13T09:05:00Z',
-    },
-    {
-      id: 'm12',
-      conversation_id: conversationId,
-      sender_id: other.id,
-      sender: other,
-      content: 'That\'s great to hear! Have you been following the prescribed diet plan?',
-      media_url: null,
-      message_type: 'text',
-      created_at: '2024-06-13T09:10:00Z',
-    },
-    {
-      id: 'm13',
-      conversation_id: conversationId,
-      sender_id: userId,
-      sender: conv.participants.find((p) => p.id === userId) || conv.participants[0],
-      content: 'Yes, I\'ve been very strict with it. My blood sugar levels have been stable.',
-      media_url: null,
-      message_type: 'text',
-      created_at: '2024-06-13T09:15:00Z',
-    },
-    {
-      id: 'm14',
-      conversation_id: conversationId,
-      sender_id: other.id,
-      sender: other,
-      content: 'Excellent! Keep it up. Let me know if you need anything before our next appointment.',
-      media_url: null,
-      message_type: 'text',
-      created_at: '2024-06-13T09:30:00Z',
-    },
-    ...(conv.last_message ? [conv.last_message] : []),
-  ];
-};
 
 export default function ChatScreen() {
   const colors = useThemeColors();
@@ -91,29 +30,55 @@ export default function ChatScreen() {
   const [messageText, setMessageText] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
-  const conversation = mockConversations.find((c) => c.id === id);
-  const otherUser = conversation?.participants.find((p) => p.id !== user?.id) || conversation?.participants[0];
-  
-  const [messages, setMessages] = useState<Message[]>(
-    generateMockMessages(id || '', user?.id || '')
-  );
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
 
-  const sendMessage = () => {
-    if (!messageText.trim() || !user) return;
-    const newMsg: Message = {
-      id: `m_${Date.now()}`,
-      conversation_id: id || '',
-      sender_id: user.id,
-      sender: user,
-      content: messageText.trim(),
-      media_url: null,
-      message_type: 'text',
-      created_at: new Date().toISOString(),
+  const otherUser =
+    conversation?.participants.find((p) => p.id !== user?.id) || conversation?.participants[0];
+
+  // Load the conversation + history, mark it read, and stream live messages.
+  useEffect(() => {
+    if (!id || !user) return;
+    let active = true;
+
+    (async () => {
+      try {
+        const [conv, history] = await Promise.all([
+          ChatService.fetchConversation(id, user.id),
+          ChatService.fetchMessages(id, user.id),
+        ]);
+        if (!active) return;
+        setConversation(conv);
+        setMessages(history);
+        ChatService.markRead(id, user.id).catch(() => {});
+      } catch (e) {
+        console.warn('Failed to load conversation:', e);
+      }
+    })();
+
+    const sub = ChatService.subscribeToMessages(id, (msg) => {
+      setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+    });
+
+    return () => {
+      active = false;
+      sub.unsubscribe();
     };
-    setMessages((prev) => [...prev, newMsg]);
+  }, [id, user?.id]);
+
+  const sendMessage = useCallback(async () => {
+    const text = messageText.trim();
+    if (!text || !user || !id) return;
     setMessageText('');
-    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-  };
+    try {
+      const sent = await ChatService.sendMessage(id, user, text);
+      setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch (e) {
+      console.warn('Failed to send message:', e);
+      setMessageText(text); // restore the draft on failure
+    }
+  }, [messageText, user, id]);
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isMe = item.sender_id === user?.id;

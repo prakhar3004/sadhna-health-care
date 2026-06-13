@@ -1,5 +1,5 @@
 // Sadhna Health Care — Doctor Dashboard Component
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,7 +8,10 @@ import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
 import { Card } from '@/src/components/ui/Card';
 import { Avatar } from '@/src/components/ui/Avatar';
-import { Radius, FontSize, Spacing } from '@/src/utils/constants';
+import { AppointmentsService } from '@/src/services/appointmentsService';
+import { Appointment } from '@/src/types';
+import { RoleConfig, Radius, FontSize, Spacing } from '@/src/utils/constants';
+import { formatTime } from '@/src/utils/helpers';
 
 export function DoctorDashboard() {
   const colors = useThemeColors();
@@ -16,22 +19,35 @@ export function DoctorDashboard() {
   const user = useAuthStore((s) => s.user);
   const { language, t } = useLanguageStore();
 
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    AppointmentsService.fetchAppointments(user.id).then(setAppointments).catch(() => {});
+  }, [user?.id]);
+
+  // The logged-in doctor's own appointments + derived, real analytics.
+  const myAppts = appointments.filter((a) => a.doctor_id === user?.id);
+  const upcoming = myAppts
+    .filter((a) => a.status === 'pending' || a.status === 'confirmed')
+    .sort((a, b) => +new Date(a.scheduled_at) - +new Date(b.scheduled_at));
+  const today = new Date().toDateString();
+  const visitsToday = myAppts.filter((a) => new Date(a.scheduled_at).toDateString() === today).length;
+  const uniquePatients = new Set(myAppts.map((a) => a.patient_id)).size;
+  const pendingCount = myAppts.filter((a) => a.status === 'pending').length;
+
+  const noApptText =
+    (({
+      en: 'No upcoming appointments', hi: 'कोई आगामी अपॉइंटमेंट नहीं', hinglish: 'Koi upcoming appointment nahi',
+      bn: 'কোন আসন্ন অ্যাপয়েন্টমেন্ট নেই', te: 'రాబోయే అపాయింట్‌మెంట్లు లేవు', mr: 'कोणतीही आगामी अपॉइंटमेंट नाही',
+      ta: 'வரவிருக்கும் சந்திப்புகள் இல்லை', gu: 'કોઈ આગામી એપોઇન્ટમેન્ટ નથી', kn: 'ಮುಂಬರುವ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್‌ಗಳಿಲ್ಲ',
+      ml: 'വരാനിരിക്കുന്ന അപ്പോയിന്റ്മെന്റുകളില്ല', pa: 'ਕੋਈ ਆਉਣ ਵਾਲੀ ਮੁਲਾਕਾਤ ਨਹੀਂ', or: 'କୌଣସି ଆଗାମୀ ଅପଏଣ୍ଟମେଣ୍ଟ ନାହିଁ',
+    } as Record<string, string>)[language]) || 'No upcoming appointments';
+
+  // Real per-user subtitle from the doctor's own profile.
   const getDoctorRoleText = () => {
-    const maps: Record<string, string> = {
-      en: 'Senior Cardiologist · MCI-12345',
-      hi: 'वरिष्ठ हृदय रोग विशेषज्ञ · MCI-12345',
-      hinglish: 'Senior Cardiologist · MCI-12345',
-      bn: 'সিনিয়র কার্ডিওলজিস্ট · MCI-12345',
-      te: 'సీనియర్ కార్డియాలజిస్ట్ · MCI-12345',
-      mr: 'वरिष्ठ हृदयरोगतज्ज्ञ · MCI-12345',
-      ta: 'மூத்த இருதயநோய் நிபுணர் · MCI-12345',
-      gu: 'વરિષ્ઠ કાર્ડિયોલોજીસ્ટ · MCI-12345',
-      kn: 'ಹಿರಿಯ ಹೃದ್ರೋಗ ತಜ್ಞ · MCI-12345',
-      ml: 'സീനിയർ കാർഡിയോളജിസ്റ്റ് · MCI-12345',
-      pa: 'ਸੀਨੀਅਰ ਕਾਰਡੀਓਲੋਜਿਸਟ · MCI-12345',
-      or: 'ବରିଷ୍ଠ କାର୍ଡିଓଲୋଜିଷ୍ଟ · MCI-12345',
-    };
-    return maps[language] || maps['en'];
+    const parts = [user?.specialization, user?.license_number].filter(Boolean);
+    return parts.length ? parts.join(' · ') : RoleConfig.doctor.description;
   };
 
   const getDocTranslations = () => {
@@ -220,39 +236,52 @@ export function DoctorDashboard() {
       <View style={styles.grid}>
         <Card style={styles.gridCard}>
           <Ionicons name="people" size={20} color={colors.primary} />
-          <Text style={[styles.gridValue, { color: colors.text }]}>28</Text>
+          <Text style={[styles.gridValue, { color: colors.text }]}>{uniquePatients}</Text>
           <Text style={[styles.gridLabel, { color: colors.textTertiary }]}>{labels.active_patients}</Text>
         </Card>
         <Card style={styles.gridCard}>
           <Ionicons name="videocam" size={20} color={colors.secondary} />
-          <Text style={[styles.gridValue, { color: colors.text }]}>5</Text>
+          <Text style={[styles.gridValue, { color: colors.text }]}>{visitsToday}</Text>
           <Text style={[styles.gridLabel, { color: colors.textTertiary }]}>{labels.visits_today}</Text>
         </Card>
         <Card style={styles.gridCard}>
           <Ionicons name="help-circle" size={20} color="#F59E0B" />
-          <Text style={[styles.gridValue, { color: colors.text }]}>3</Text>
+          <Text style={[styles.gridValue, { color: colors.text }]}>{pendingCount}</Text>
           <Text style={[styles.gridLabel, { color: colors.textTertiary }]}>{labels.open_queries}</Text>
         </Card>
       </View>
 
-      {/* Appointment Queue */}
+      {/* Appointment Queue — the doctor's real upcoming appointments */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>{labels.appt_queue}</Text>
       <Card style={styles.apptCard}>
-        <View style={[styles.apptItem, { borderColor: colors.borderLight }]}>
-          <View style={styles.apptInfo}>
-            <Avatar uri={null} name="Rahul Verma" size={36} />
-            <View style={{ marginLeft: 10 }}>
-              <Text style={[styles.apptName, { color: colors.text }]}>Rahul Verma</Text>
-              <Text style={[styles.apptTime, { color: colors.textSecondary }]}>5:00 PM ({labels.video_consult})</Text>
+        {upcoming.length === 0 ? (
+          <Text style={[styles.apptTime, { color: colors.textTertiary, paddingVertical: Spacing.sm }]}>
+            {noApptText}
+          </Text>
+        ) : (
+          upcoming.slice(0, 5).map((appt) => (
+            <View key={appt.id} style={[styles.apptItem, { borderColor: colors.borderLight }]}>
+              <View style={styles.apptInfo}>
+                <Avatar uri={appt.patient?.avatar_url ?? null} name={appt.patient?.full_name || 'Patient'} size={36} />
+                <View style={{ marginLeft: 10 }}>
+                  <Text style={[styles.apptName, { color: colors.text }]}>{appt.patient?.full_name || 'Patient'}</Text>
+                  <Text style={[styles.apptTime, { color: colors.textSecondary }]}>
+                    {formatTime(appt.scheduled_at)}
+                    {appt.type === 'video_call' ? ` (${labels.video_consult})` : ''}
+                  </Text>
+                </View>
+              </View>
+              {appt.type === 'video_call' && (
+                <TouchableOpacity
+                  style={[styles.callBtn, { backgroundColor: colors.primary }]}
+                  onPress={() => Alert.alert(labels.video_alert_title, labels.video_alert_msg)}
+                >
+                  <Ionicons name="videocam" size={16} color="#FFF" />
+                </TouchableOpacity>
+              )}
             </View>
-          </View>
-          <TouchableOpacity
-            style={[styles.callBtn, { backgroundColor: colors.primary }]}
-            onPress={() => Alert.alert(labels.video_alert_title, labels.video_alert_msg)}
-          >
-            <Ionicons name="videocam" size={16} color="#FFF" />
-          </TouchableOpacity>
-        </View>
+          ))
+        )}
       </Card>
 
       {/* Quick Actions */}

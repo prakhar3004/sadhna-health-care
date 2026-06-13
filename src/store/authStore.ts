@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { Profile } from '@/src/types';
 import { UserRole } from '@/src/utils/constants';
 import { supabase } from '@/src/lib/supabase';
+import { isDemoMode } from '@/src/lib/config';
 
 interface AuthState {
   user: Profile | null;
@@ -40,6 +41,7 @@ const MOCK_USERS: Record<string, Profile> = {
     posts_count: 156,
     created_at: '2024-01-15T10:00:00Z',
     updated_at: '2024-06-01T10:00:00Z',
+    is_profile_complete: true,
   },
   'caregiver@test.com': {
     id: '2',
@@ -60,6 +62,7 @@ const MOCK_USERS: Record<string, Profile> = {
     posts_count: 78,
     created_at: '2024-03-10T10:00:00Z',
     updated_at: '2024-06-01T10:00:00Z',
+    is_profile_complete: true,
   },
   'patient@test.com': {
     id: '3',
@@ -80,6 +83,7 @@ const MOCK_USERS: Record<string, Profile> = {
     posts_count: 23,
     created_at: '2024-05-20T10:00:00Z',
     updated_at: '2024-06-01T10:00:00Z',
+    is_profile_complete: true,
   },
 };
 
@@ -92,13 +96,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   login: async (email: string, password: string) => {
     set({ isLoading: true });
-    
-    // Check if we are running with placeholder credentials (fallback to mock flow)
-    const isPlaceholder = supabase.auth.getSession === undefined || 
-      process.env.EXPO_PUBLIC_SUPABASE_URL === undefined || 
-      process.env.EXPO_PUBLIC_SUPABASE_URL.includes('your-project');
 
-    if (isPlaceholder) {
+    if (isDemoMode()) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       const mockUser = MOCK_USERS[email.toLowerCase()];
       if (mockUser) {
@@ -149,6 +148,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             posts_count: 0,
             created_at: data.user.created_at,
             updated_at: new Date().toISOString(),
+            is_profile_complete: false,
           };
           set({ user: fallbackProfile, isAuthenticated: true, isLoading: false });
         }
@@ -162,11 +162,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (email: string, password: string, fullName: string, role: UserRole) => {
     set({ isLoading: true });
 
-    const isPlaceholder = supabase.auth.getSession === undefined || 
-      process.env.EXPO_PUBLIC_SUPABASE_URL === undefined || 
-      process.env.EXPO_PUBLIC_SUPABASE_URL.includes('your-project');
-
-    if (isPlaceholder) {
+    if (isDemoMode()) {
       await new Promise((resolve) => setTimeout(resolve, 1200));
       const newUser: Profile = {
         id: Date.now().toString(),
@@ -251,59 +247,66 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialize: () => {
     set({ isLoading: true });
 
-    // Check placeholder state to skip listener if config is not present
-    const isPlaceholder = supabase.auth.getSession === undefined || 
-      process.env.EXPO_PUBLIC_SUPABASE_URL === undefined || 
-      process.env.EXPO_PUBLIC_SUPABASE_URL.includes('your-project');
-
-    if (isPlaceholder) {
+    // Skip the auth listener entirely when there is no live backend configured.
+    if (isDemoMode()) {
       // Set loading false so index page does not block redirects
       set({ isLoading: false });
       return () => {};
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        try {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-          if (profile && !error) {
-            set({ user: profile as Profile, isAuthenticated: true, isLoading: false });
-          } else {
-            // Read from Auth Metadata if DB profiles row doesn't exist yet
-            const metadata = session.user.user_metadata || {};
-            const fallbackProfile: Profile = {
-              id: session.user.id,
-              role: metadata.role || 'patient',
-              full_name: metadata.full_name || 'User',
-              username: session.user.email?.split('@')[0] || 'user',
-              avatar_url: metadata.avatar_url || null,
-              bio: null,
-              specialization: metadata.specialization || null,
-              license_number: metadata.license_number || null,
-              experience_years: null,
-              location: null,
-              phone: null,
-              is_verified: false,
-              is_online: true,
-              followers_count: 0,
-              following_count: 0,
-              posts_count: 0,
-              created_at: session.user.created_at,
-              updated_at: new Date().toISOString(),
-            };
-            set({ user: fallbackProfile, isAuthenticated: true, isLoading: false });
-          }
-        } catch (err) {
-          console.error('Auth initialization profile fetch error:', err);
-          set({ isLoading: false });
-        }
-      } else {
+      // Signed out OR token refresh failed / session expired → clear state.
+      // The route-group guards react to this and bounce the user to login.
+      if (!session) {
         set({ user: null, isAuthenticated: false, isLoading: false });
+        return;
+      }
+
+      // Token silently refreshed and we already have the profile → nothing to reload.
+      if (event === 'TOKEN_REFRESHED' && useAuthStore.getState().user) {
+        set({ isLoading: false });
+        return;
+      }
+
+      // SIGNED_IN / INITIAL_SESSION / USER_UPDATED → (re)load the profile.
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile && !error) {
+          set({ user: profile as Profile, isAuthenticated: true, isLoading: false });
+        } else {
+          // Read from Auth metadata if the profiles row doesn't exist yet.
+          const metadata = session.user.user_metadata || {};
+          const fallbackProfile: Profile = {
+            id: session.user.id,
+            role: metadata.role || 'patient',
+            full_name: metadata.full_name || 'User',
+            username: session.user.email?.split('@')[0] || 'user',
+            avatar_url: metadata.avatar_url || null,
+            bio: null,
+            specialization: metadata.specialization || null,
+            license_number: metadata.license_number || null,
+            experience_years: null,
+            location: null,
+            phone: null,
+            is_verified: false,
+            is_online: true,
+            followers_count: 0,
+            following_count: 0,
+            posts_count: 0,
+            created_at: session.user.created_at,
+            updated_at: new Date().toISOString(),
+            is_profile_complete: false,
+          };
+          set({ user: fallbackProfile, isAuthenticated: true, isLoading: false });
+        }
+      } catch (err) {
+        console.error('Auth state profile fetch error:', err);
+        set({ isLoading: false });
       }
     });
 
@@ -326,11 +329,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       is_profile_complete: true,
     };
 
-    const isPlaceholder = supabase.auth.getSession === undefined || 
-      process.env.EXPO_PUBLIC_SUPABASE_URL === undefined || 
-      process.env.EXPO_PUBLIC_SUPABASE_URL.includes('your-project');
-
-    if (isPlaceholder) {
+    if (isDemoMode()) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       set({ user: updatedUser, isAuthenticated: true, isLoading: false });
       return;

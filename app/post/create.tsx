@@ -16,6 +16,7 @@ import { Avatar } from '@/src/components/ui/Avatar';
 import { RoleBadge } from '@/src/components/ui/RoleBadge';
 import { useThemeColors } from '@/src/hooks/useTheme';
 import { useAuthStore } from '@/src/store/authStore';
+import { PostsService } from '@/src/services/postsService';
 import { PostType, PostTypeConfig, FontSize, Spacing, Radius } from '@/src/utils/constants';
 
 export default function CreatePostScreen() {
@@ -45,15 +46,30 @@ export default function CreatePostScreen() {
   });
 
   const [visibility, setVisibility] = useState<'public' | 'doctors_only' | 'care_team'>('public');
+  const [posting, setPosting] = useState(false);
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (!content.trim()) {
       Alert.alert('Empty Post', 'Please write something to share.');
       return;
     }
-    Alert.alert('Post Created! ✅', 'Your post has been shared with the community.', [
-      { text: 'OK', onPress: () => router.back() },
-    ]);
+    if (!user || posting) return;
+
+    setPosting(true);
+    try {
+      await PostsService.createPost(user, {
+        content: content.trim(),
+        post_type: postType,
+        visibility,
+      });
+      Alert.alert('Post Created! ✅', 'Your post has been shared with the community.', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Could not create the post. Please try again.');
+    } finally {
+      setPosting(false);
+    }
   };
 
   if (!user) return null;
@@ -72,10 +88,10 @@ export default function CreatePostScreen() {
             { backgroundColor: content.trim() ? colors.primary : colors.surfaceSecondary },
           ]}
           onPress={handlePost}
-          disabled={!content.trim()}
+          disabled={!content.trim() || posting}
         >
           <Text style={[styles.postBtnText, { color: content.trim() ? '#FFF' : colors.textTertiary }]}>
-            Post
+            {posting ? 'Posting…' : 'Post'}
           </Text>
         </TouchableOpacity>
       </View>

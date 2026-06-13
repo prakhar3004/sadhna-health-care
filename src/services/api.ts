@@ -1,5 +1,6 @@
 // Sadhna Health Care — API Services Layer
 import { supabase } from '@/src/lib/supabase';
+import { isDemoMode } from '@/src/lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Interfaces mapping database schemas
@@ -71,19 +72,10 @@ export interface SevaPoolRecord {
   contributors: number;
 }
 
-// Helper to check if using placeholder credentials (local demo mode)
-const isPlaceholderMode = (): boolean => {
-  return (
-    supabase.auth.getSession === undefined ||
-    process.env.EXPO_PUBLIC_SUPABASE_URL === undefined ||
-    process.env.EXPO_PUBLIC_SUPABASE_URL.includes('your-project')
-  );
-};
-
 export const ApiService = {
   // ─── Vitals Log Operations ──────────────────────────────────
   async saveVitalsLog(patientId: string, record: VitalsLogRecord): Promise<void> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       try {
         await AsyncStorage.setItem(
           'user_vitals_logged',
@@ -111,7 +103,7 @@ export const ApiService = {
   },
 
   async fetchLatestVitals(patientId: string): Promise<VitalsLogRecord | null> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       try {
         const stored = await AsyncStorage.getItem('user_vitals_logged');
         if (stored) {
@@ -153,7 +145,7 @@ export const ApiService = {
 
   // ─── Life Goals Operations ──────────────────────────────────
   async fetchLifeGoals(patientId: string, fallbackDefaults: LifeGoalRecord[]): Promise<LifeGoalRecord[]> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       try {
         const stored = await AsyncStorage.getItem('user_life_goals');
         if (stored) return JSON.parse(stored);
@@ -185,7 +177,7 @@ export const ApiService = {
   },
 
   async saveLifeGoals(patientId: string, goals: LifeGoalRecord[]): Promise<void> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       try {
         await AsyncStorage.setItem('user_life_goals', JSON.stringify(goals));
       } catch (e) {}
@@ -212,7 +204,7 @@ export const ApiService = {
   },
 
   async deleteLifeGoal(goalId: string): Promise<void> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       return; // Handled locally by filtering array and saving back
     }
 
@@ -227,7 +219,7 @@ export const ApiService = {
 
   // ─── Care Alerts Operations ─────────────────────────────────
   async fetchCareAlerts(patientId: string, fallbackDefaults: CareAlertRecord[]): Promise<CareAlertRecord[]> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       try {
         const stored = await AsyncStorage.getItem('user_care_alerts');
         if (stored) return JSON.parse(stored);
@@ -263,7 +255,7 @@ export const ApiService = {
   },
 
   async saveCareAlerts(patientId: string, alerts: CareAlertRecord[]): Promise<void> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       try {
         await AsyncStorage.setItem('user_care_alerts', JSON.stringify(alerts));
       } catch (e) {}
@@ -293,7 +285,7 @@ export const ApiService = {
 
   // ─── Treatment & Lab Report History ─────────────────────────
   async fetchTreatmentHistory(patientId: string, fallbackDefaults: HistoryItemRecord[]): Promise<HistoryItemRecord[]> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       try {
         const stored = await AsyncStorage.getItem('user_treatment_history');
         if (stored) return JSON.parse(stored);
@@ -328,7 +320,7 @@ export const ApiService = {
   },
 
   async saveTreatmentHistory(patientId: string, history: HistoryItemRecord[]): Promise<void> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       try {
         await AsyncStorage.setItem('user_treatment_history', JSON.stringify(history));
       } catch (e) {}
@@ -357,7 +349,7 @@ export const ApiService = {
 
   // ─── SOS Emergency Contacts ─────────────────────────────────
   async fetchSosContacts(patientId: string, fallbackDefaults: SosContactRecord[]): Promise<SosContactRecord[]> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       try {
         const stored = await AsyncStorage.getItem('user_sos_contacts');
         if (stored) return JSON.parse(stored);
@@ -389,7 +381,7 @@ export const ApiService = {
   },
 
   async saveSosContacts(patientId: string, contacts: SosContactRecord[]): Promise<void> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       try {
         await AsyncStorage.setItem('user_sos_contacts', JSON.stringify(contacts));
       } catch (e) {}
@@ -414,7 +406,7 @@ export const ApiService = {
   },
 
   async deleteSosContact(contactId: string): Promise<void> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       return;
     }
 
@@ -430,7 +422,7 @@ export const ApiService = {
   // ─── Seva Ecosystem Pool Operations ─────────────────────────
   async fetchSevaPool(): Promise<SevaPoolRecord> {
     const defaultPool = { amount: 485200, contributors: 1240 };
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       try {
         const amt = await AsyncStorage.getItem('user_seva_pool_amount');
         const contrib = await AsyncStorage.getItem('user_seva_pool_contributors');
@@ -457,30 +449,13 @@ export const ApiService = {
     }
   },
 
-  async updateSevaPool(amount: number, contributors: number): Promise<void> {
-    if (isPlaceholderMode()) {
-      try {
-        await AsyncStorage.setItem('user_seva_pool_amount', amount.toString());
-        await AsyncStorage.setItem('user_seva_pool_contributors', contributors.toString());
-      } catch (e) {}
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('seva_pool')
-        .update({ amount, contributors, updated_at: new Date().toISOString() })
-        .eq('id', 'main_pool');
-      if (error) throw error;
-    } catch (err) {
-      console.error('Supabase updateSevaPool error:', err);
-      throw err;
-    }
-  },
+  // Note: the pool is mutated only through donateToPool / donateToRequest
+  // (atomic SECURITY DEFINER RPCs). There is intentionally no client-side
+  // "set the pool to an arbitrary value" method.
 
   // ─── Emergency Medical Funding Requests ──────────────────────
   async fetchEmergencyRequests(fallbackDefaults: EmergencyRequestRecord[]): Promise<EmergencyRequestRecord[]> {
-    if (isPlaceholderMode()) {
+    if (isDemoMode()) {
       try {
         const stored = await AsyncStorage.getItem('user_seva_emergency_requests');
         if (stored) return JSON.parse(stored);
@@ -516,34 +491,103 @@ export const ApiService = {
     }
   },
 
-  async saveEmergencyRequests(patientId: string, requests: EmergencyRequestRecord[]): Promise<void> {
-    if (isPlaceholderMode()) {
+  // ─── Donations (atomic, server-authoritative) ────────────────
+  // Money mutations never trust client-computed totals. In live mode they go
+  // through SECURITY DEFINER Postgres functions that increment atomically and
+  // return the authoritative new values; direct table UPDATEs are blocked by RLS.
+
+  /** Contribute to the general Seva pool. Returns the updated pool. */
+  async donateToPool(amount: number): Promise<SevaPoolRecord> {
+    if (amount <= 0) throw new Error('Donation amount must be positive');
+
+    if (isDemoMode()) {
+      const pool = await ApiService.fetchSevaPool();
+      const updated = { amount: pool.amount + amount, contributors: pool.contributors + 1 };
+      try {
+        await AsyncStorage.setItem('user_seva_pool_amount', updated.amount.toString());
+        await AsyncStorage.setItem('user_seva_pool_contributors', updated.contributors.toString());
+      } catch (e) {}
+      return updated;
+    }
+
+    const { data, error } = await supabase.rpc('donate_to_pool', { p_amount: amount });
+    if (error) throw error;
+    return { amount: data.amount, contributors: data.contributors };
+  },
+
+  /**
+   * Contribute to a specific emergency request. Returns the updated request list
+   * (with the request's new raised amount) and the updated pool contributor count.
+   */
+  async donateToRequest(
+    requestId: string,
+    amount: number,
+    currentRequests: EmergencyRequestRecord[]
+  ): Promise<{ requests: EmergencyRequestRecord[]; pool: SevaPoolRecord }> {
+    if (amount <= 0) throw new Error('Donation amount must be positive');
+
+    if (isDemoMode()) {
+      const requests = currentRequests.map((r) =>
+        r.id === requestId
+          ? { ...r, raisedAmount: Math.min(r.requiredAmount, r.raisedAmount + amount) }
+          : r
+      );
       try {
         await AsyncStorage.setItem('user_seva_emergency_requests', JSON.stringify(requests));
+      } catch (e) {}
+      const pool = await ApiService.fetchSevaPool();
+      const newPool = { amount: pool.amount, contributors: pool.contributors + 1 };
+      try {
+        await AsyncStorage.setItem('user_seva_pool_contributors', newPool.contributors.toString());
+      } catch (e) {}
+      return { requests, pool: newPool };
+    }
+
+    const { data, error } = await supabase.rpc('donate_to_request', {
+      p_request_id: requestId,
+      p_amount: amount,
+    });
+    if (error) throw error;
+
+    const requests = currentRequests.map((r) =>
+      r.id === requestId ? { ...r, raisedAmount: data.raised_amount } : r
+    );
+    return {
+      requests,
+      pool: { amount: data.pool_amount, contributors: data.pool_contributors },
+    };
+  },
+
+  /**
+   * Create a single new emergency request. In live mode this inserts only the
+   * one new row (it never re-writes other patients' requests); in demo mode it
+   * persists the caller's full list to AsyncStorage.
+   */
+  async addEmergencyRequest(
+    patientId: string,
+    request: EmergencyRequestRecord,
+    fullList: EmergencyRequestRecord[]
+  ): Promise<void> {
+    if (isDemoMode()) {
+      try {
+        await AsyncStorage.setItem('user_seva_emergency_requests', JSON.stringify(fullList));
       } catch (e) {}
       return;
     }
 
-    try {
-      for (const req of requests) {
-        const { error } = await supabase.from('emergency_requests').upsert({
-          id: req.id,
-          patient_id: patientId,
-          patient_name: req.patientName,
-          hospital: req.hospital,
-          reason: req.reason,
-          required_amount: req.requiredAmount,
-          raised_amount: req.raisedAmount,
-          status: req.status,
-          partner_ngo: req.partnerNGO,
-          document_name: req.documentName || null,
-          date: req.date,
-        });
-        if (error) throw error;
-      }
-    } catch (err) {
-      console.error('Supabase saveEmergencyRequests error:', err);
-      throw err;
-    }
+    const { error } = await supabase.from('emergency_requests').insert({
+      id: request.id,
+      patient_id: patientId,
+      patient_name: request.patientName,
+      hospital: request.hospital,
+      reason: request.reason,
+      required_amount: request.requiredAmount,
+      raised_amount: request.raisedAmount,
+      status: request.status,
+      partner_ngo: request.partnerNGO,
+      document_name: request.documentName || null,
+      date: request.date,
+    });
+    if (error) throw error;
   },
 };

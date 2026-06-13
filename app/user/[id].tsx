@@ -1,5 +1,5 @@
 // Sadhna Health Care — User Profile (Other User)
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,11 @@ import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
 import { PostCard } from '@/src/components/feed/PostCard';
 import { useThemeColors } from '@/src/hooks/useTheme';
-import { mockProfiles, mockPosts } from '@/src/data/mockData';
+import { useAuthStore } from '@/src/store/authStore';
+import { PeopleService } from '@/src/services/peopleService';
+import { PostsService } from '@/src/services/postsService';
+import { ChatService } from '@/src/services/chatService';
+import { Profile, Post } from '@/src/types';
 import { RoleConfig, FontSize, Spacing, Radius } from '@/src/utils/constants';
 import { formatCount } from '@/src/utils/helpers';
 
@@ -24,13 +28,63 @@ export default function UserProfileScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const user = useAuthStore((s) => s.user);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
 
-  const profile = mockProfiles.find((p) => p.id === id);
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    (async () => {
+      try {
+        const [p, posts] = await Promise.all([
+          PeopleService.fetchProfile(id),
+          PeopleService.fetchUserPosts(id),
+        ]);
+        if (!active) return;
+        setProfile(p);
+        setUserPosts(posts);
+        if (user && user.id !== id) {
+          setIsFollowing(await PeopleService.isFollowing(user.id, id));
+        }
+      } catch (e) {
+        console.warn('Failed to load profile:', e);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [id, user?.id]);
+
+  const handleToggleFollow = useCallback(async () => {
+    if (!user || !id || followBusy || user.id === id) return;
+    const next = !isFollowing;
+    setIsFollowing(next); // optimistic
+    setFollowBusy(true);
+    try {
+      await PeopleService.setFollow(user.id, id, next);
+    } catch (e) {
+      setIsFollowing(!next); // revert on failure
+    } finally {
+      setFollowBusy(false);
+    }
+  }, [user, id, isFollowing, followBusy]);
+
+  const handleMessage = useCallback(async () => {
+    if (!user || !id) return;
+    try {
+      const convId = await ChatService.getOrCreateDirectConversation(user.id, id);
+      router.push(`/chat/${convId}` as any);
+    } catch (e) {
+      console.warn('Failed to open chat:', e);
+    }
+  }, [user, id]);
+
   if (!profile) return null;
-
-  const userPosts = mockPosts.filter((p) => p.author_id === id);
   const roleConfig = RoleConfig[profile.role];
+  const isSelf = user?.id === profile.id;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
@@ -85,24 +139,27 @@ export default function UserProfileScreen() {
           </View>
 
           {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <Button
-              title={isFollowing ? 'Following' : 'Follow'}
-              variant={isFollowing ? 'outline' : 'primary'}
-              size="md"
-              icon={isFollowing ? 'checkmark' : 'person-add-outline'}
-              onPress={() => setIsFollowing(!isFollowing)}
-              style={{ flex: 1 }}
-            />
-            <Button
-              title="Message"
-              variant="secondary"
-              size="md"
-              icon="chatbubble-outline"
-              onPress={() => router.push('/chat/new' as any)}
-              style={{ flex: 1 }}
-            />
-          </View>
+          {!isSelf && (
+            <View style={styles.actionButtons}>
+              <Button
+                title={isFollowing ? 'Following' : 'Follow'}
+                variant={isFollowing ? 'outline' : 'primary'}
+                size="md"
+                icon={isFollowing ? 'checkmark' : 'person-add-outline'}
+                onPress={handleToggleFollow}
+                disabled={followBusy}
+                style={{ flex: 1 }}
+              />
+              <Button
+                title="Message"
+                variant="secondary"
+                size="md"
+                icon="chatbubble-outline"
+                onPress={handleMessage}
+                style={{ flex: 1 }}
+              />
+            </View>
+          )}
         </View>
 
         {/* Professional Info */}
@@ -135,7 +192,19 @@ export default function UserProfileScreen() {
             Recent Posts
           </Text>
           {userPosts.length > 0 ? (
-            userPosts.map((post) => <PostCard key={post.id} post={post} />)
+            userPosts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onReact={(postId, reaction) => {
+                  if (user) PostsService.setReaction(postId, user.id, reaction).catch(() => {});
+                }}
+                onBookmark={(postId, bookmarked) => {
+                  if (user) PostsService.toggleBookmark(postId, user.id, bookmarked).catch(() => {});
+                }}
+                onComment={(postId) => router.push(`/post/${postId}` as any)}
+              />
+            ))
           ) : (
             <View style={styles.emptyPosts}>
               <Ionicons name="document-text-outline" size={40} color={colors.textTertiary} />

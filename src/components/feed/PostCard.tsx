@@ -15,13 +15,13 @@ import { Radius, FontSize, Spacing } from '@/src/utils/constants';
 
 interface PostCardProps {
   post: Post;
-  onLike?: (postId: string) => void;
+  onReact?: (postId: string, reaction: ReactionType | null) => void;
   onComment?: (postId: string) => void;
-  onBookmark?: (postId: string) => void;
+  onBookmark?: (postId: string, bookmarked: boolean) => void;
   onShare?: (postId: string) => void;
 }
 
-export function PostCard({ post, onLike, onComment, onBookmark, onShare }: PostCardProps) {
+export function PostCard({ post, onReact, onComment, onBookmark, onShare }: PostCardProps) {
   const colors = useThemeColors();
   const router = useRouter();
   const language = useLanguageStore((state) => state.language);
@@ -53,7 +53,7 @@ export function PostCard({ post, onLike, onComment, onBookmark, onShare }: PostC
     });
     setUserReaction(type);
     setShowReactions(false);
-    onLike?.(post.id);
+    onReact?.(post.id, type);
   };
 
   const handleToggleReact = () => {
@@ -65,7 +65,7 @@ export function PostCard({ post, onLike, onComment, onBookmark, onShare }: PostC
         return updated;
       });
       setUserReaction(null);
-      onLike?.(post.id);
+      onReact?.(post.id, null);
     } else {
       // Open reactions popup immediately so they can choose
       setShowReactions(!showReactions);
@@ -73,8 +73,9 @@ export function PostCard({ post, onLike, onComment, onBookmark, onShare }: PostC
   };
 
   const handleBookmark = () => {
-    setBookmarked(!bookmarked);
-    onBookmark?.(post.id);
+    const next = !bookmarked;
+    setBookmarked(next);
+    onBookmark?.(post.id, next);
   };
 
   const handleTranslateToggle = () => {

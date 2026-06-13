@@ -1,5 +1,5 @@
 // Sadhna Health Care — Home Feed & Dashboard Screen
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,9 @@ import { Avatar } from '@/src/components/ui/Avatar';
 import { useThemeColors } from '@/src/hooks/useTheme';
 import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
-import { mockPosts, mockProfiles } from '@/src/data/mockData';
+import { PostsService } from '@/src/services/postsService';
+import { PeopleService } from '@/src/services/peopleService';
+import { Post, Profile } from '@/src/types';
 import { APP_NAME, FontSize, Spacing, Radius } from '@/src/utils/constants';
 
 // Role Dashboards
@@ -36,6 +38,26 @@ export default function HomeFeedScreen() {
   const [activeTab, setActiveTab] = useState<'feed' | 'dashboard'>('feed');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'doctor' | 'caregiver' | 'patient' | 'milestone'>('all');
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [people, setPeople] = useState<Profile[]>([]);
+
+  const loadFeed = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [feed, suggested] = await Promise.all([
+        PostsService.fetchFeed(user.id),
+        PeopleService.search('', 'all', user.id),
+      ]);
+      setPosts(feed);
+      setPeople(suggested);
+    } catch (e) {
+      console.warn('Failed to load feed:', e);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadFeed();
+  }, [loadFeed]);
 
   const languageOptions: { key: any; label: string }[] = [
     { key: 'en', label: 'English' },
@@ -52,21 +74,22 @@ export default function HomeFeedScreen() {
     { key: 'or', label: 'ଓଡ଼ିଆ' },
   ];
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
-  }, []);
+    await loadFeed();
+    setRefreshing(false);
+  }, [loadFeed]);
 
   const filteredPosts = React.useMemo(() => {
-    if (selectedFilter === 'all') return mockPosts;
+    if (selectedFilter === 'all') return posts;
     if (selectedFilter === 'doctor' || selectedFilter === 'caregiver' || selectedFilter === 'patient') {
-      return mockPosts.filter((p) => p.author.role === selectedFilter);
+      return posts.filter((p) => p.author.role === selectedFilter);
     }
     if (selectedFilter === 'milestone') {
-      return mockPosts.filter((p) => p.post_type === 'milestone' || p.post_type === 'recovery_story');
+      return posts.filter((p) => p.post_type === 'milestone' || p.post_type === 'recovery_story');
     }
-    return mockPosts;
-  }, [selectedFilter]);
+    return posts;
+  }, [selectedFilter, posts]);
 
   const filterChips = [
     { key: 'all' as const, label: t('filter_all') },
@@ -76,7 +99,7 @@ export default function HomeFeedScreen() {
     { key: 'milestone' as const, label: t('filter_milestones') },
   ];
 
-  const renderStoryItem = ({ item }: { item: typeof mockProfiles[0] }) => (
+  const renderStoryItem = ({ item }: { item: Profile }) => (
     <TouchableOpacity
       style={styles.storyItem}
       onPress={() => router.push(`/user/${item.id}` as any)}
@@ -110,7 +133,7 @@ export default function HomeFeedScreen() {
       <View style={[styles.storiesSection, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
         <FlatList
           horizontal
-          data={mockProfiles.filter((p) => p.id !== user?.id)}
+          data={people}
           renderItem={renderStoryItem}
           keyExtractor={(item) => item.id}
           showsHorizontalScrollIndicator={false}
@@ -212,7 +235,18 @@ export default function HomeFeedScreen() {
       {activeTab === 'feed' ? (
         <FlatList
           data={filteredPosts}
-          renderItem={({ item }) => <PostCard post={item} />}
+          renderItem={({ item }) => (
+            <PostCard
+              post={item}
+              onReact={(postId, reaction) => {
+                if (user) PostsService.setReaction(postId, user.id, reaction).catch(() => {});
+              }}
+              onBookmark={(postId, bookmarked) => {
+                if (user) PostsService.toggleBookmark(postId, user.id, bookmarked).catch(() => {});
+              }}
+              onComment={(postId) => router.push(`/post/${postId}` as any)}
+            />
+          )}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={ListHeader}
           showsVerticalScrollIndicator={false}

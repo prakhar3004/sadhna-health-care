@@ -1,5 +1,5 @@
 // Sadhna Health Care — Caregiver Dashboard Component
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,7 +8,9 @@ import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
 import { Card } from '@/src/components/ui/Card';
 import { Avatar } from '@/src/components/ui/Avatar';
-import { Radius, FontSize, Spacing } from '@/src/utils/constants';
+import { AppointmentsService } from '@/src/services/appointmentsService';
+import { Appointment } from '@/src/types';
+import { RoleConfig, Radius, FontSize, Spacing } from '@/src/utils/constants';
 
 export function CaregiverDashboard() {
   const colors = useThemeColors();
@@ -22,28 +24,35 @@ export function CaregiverDashboard() {
     { id: 3, done: false },
   ]);
 
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    AppointmentsService.fetchAppointments(user.id).then(setAppointments).catch(() => {});
+  }, [user?.id]);
+
+  // Distinct patients this caregiver is assigned to (from real appointments).
+  const recipientCount = new Set(
+    appointments.filter((a) => a.caregiver_id === user?.id).map((a) => a.patient_id)
+  ).size;
+
   const toggleCheck = (id: number) => {
     setChecklist((prev) =>
       prev.map((item) => (item.id === id ? { ...item, done: !item.done } : item))
     );
   };
 
+  // Real per-user subtitle from the caregiver's own profile.
   const getCaregiverRoleText = () => {
-    const maps: Record<string, string> = {
-      en: 'Dedicated Caregiver · Home Nursing Professional',
-      hi: 'समर्पित देखभालकर्ता · गृह परिचर्या पेशेवर',
-      hinglish: 'Dedicated Caregiver · Home Nursing Professional',
-      bn: 'উৎসর্গীকৃত কেয়ারগিভার · হোম নার্সিং পেশাদার',
-      te: 'సమర్పిత కేర్ గివర్ · హోమ్ నర్సింగ్ ప్రొఫెషనల్',
-      mr: 'समर्पित काळजीवाहू · गृह परिचर्या व्यावसायिक',
-      ta: 'அர்ப்பணிப்புள்ள கவனிப்பாளர் · வீட்டு நர்சிங் நிபுணர்',
-      gu: 'સમર્પित સંભાળ રાખનાર · હોમ નર્સિંગ પ્રોફેશનલ',
-      kn: 'ಸಮರ್ಪಿತ ಆರೈಕೆದಾರ · ಮನೆ ಶುಶ್ರೂಷಾ ವೃತ್ತಿಪರ',
-      ml: 'സമർപ്പിത പരിചാരകൻ · ഹോം നഴ്സിംഗ് പ്രൊഫഷണൽ',
-      pa: 'ਸਮਰਪਿਤ ਦੇਖਭਾਲਕਰਤਾ · ਹੋਮ ਨਰਸਿੰਗ ਪੇਸ਼ੇਵਰ',
-      or: 'ଉତ୍ସର୍ଗୀକୃତ ଯତ୍ନକାରୀ · ଗୃହ ନର୍ସିଂ ପେସାଦାର',
-    };
-    return maps[language] || maps['en'];
+    if (user?.caregiver_type === 'professional') {
+      return ['Professional Caregiver', user?.experience_years ? `${user.experience_years}+ yrs` : null]
+        .filter(Boolean)
+        .join(' · ');
+    }
+    if (user?.caregiver_type === 'family') {
+      return ['Family Caregiver', user?.relation_to_patient].filter(Boolean).join(' · ');
+    }
+    return RoleConfig.caregiver.description;
   };
 
   const getCaregiverTranslations = () => {
@@ -240,7 +249,7 @@ export function CaregiverDashboard() {
       <View style={styles.grid}>
         <Card style={styles.gridCard}>
           <Ionicons name="heart" size={20} color="#EF4444" />
-          <Text style={[styles.gridValue, { color: colors.text }]}>2</Text>
+          <Text style={[styles.gridValue, { color: colors.text }]}>{recipientCount}</Text>
           <Text style={[styles.gridLabel, { color: colors.textTertiary }]}>{labels.recipients}</Text>
         </Card>
         <Card style={styles.gridCard}>
