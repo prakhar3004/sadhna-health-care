@@ -590,4 +590,29 @@ export const ApiService = {
     });
     if (error) throw error;
   },
+
+  /**
+   * Verify or reject a patient emergency medical funding request (doctor-scoped action).
+   */
+  async verifyEmergencyRequest(requestId: string, status: 'verified' | 'rejected'): Promise<void> {
+    if (isDemoMode()) {
+      try {
+        const stored = await AsyncStorage.getItem('user_seva_emergency_requests');
+        if (stored) {
+          const list = JSON.parse(stored) as EmergencyRequestRecord[];
+          const updated = list.map((r) => (r.id === requestId ? { ...r, status } : r));
+          await AsyncStorage.setItem('user_seva_emergency_requests', JSON.stringify(updated));
+        }
+      } catch (e) {
+        console.error('Local AsyncStorage verify request error:', e);
+      }
+      return;
+    }
+
+    const { error } = await supabase
+      .from('emergency_requests')
+      .update({ status })
+      .eq('id', requestId);
+    if (error) throw error;
+  },
 };
