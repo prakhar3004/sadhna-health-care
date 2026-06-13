@@ -6,6 +6,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Platform } from 'react-native';
 import { useColorScheme } from '@/src/hooks/useTheme';
 import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
@@ -16,10 +17,16 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
-  const [fontsLoaded, error] = useFonts({
-    ...FontAwesome.font,
-    ...Ionicons.font,
-  });
+  const [fontsLoaded, error] = useFonts(Platform.select({
+    web: {
+      Ionicons: 'https://cdn.jsdelivr.net/npm/@expo/vector-icons@14.0.0/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf',
+      FontAwesome: 'https://cdn.jsdelivr.net/npm/@expo/vector-icons@14.0.0/build/vendor/react-native-vector-icons/Fonts/FontAwesome.ttf',
+    },
+    default: {
+      ...FontAwesome.font,
+      ...Ionicons.font,
+    },
+  }) as any);
 
   useEffect(() => {
     if (error) throw error;

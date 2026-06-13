@@ -244,7 +244,7 @@ export default function HomeFeedScreen() {
               onBookmark={(postId, bookmarked) => {
                 if (user) PostsService.toggleBookmark(postId, user.id, bookmarked).catch(() => {});
               }}
-              onComment={(postId) => router.push(`/post/${postId}` as any)}
+              onComment={(postId) => router.push({ pathname: '/post/[id]', params: { id: postId } } as any)}
             />
           )}
           keyExtractor={(item) => item.id}

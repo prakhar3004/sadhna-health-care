@@ -1,6 +1,6 @@
 // Sadhna Health Care — PostCard Component
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useThemeColors } from '@/src/hooks/useTheme';
@@ -76,6 +76,20 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
     const next = !bookmarked;
     setBookmarked(next);
     onBookmark?.(post.id, next);
+  };
+
+  const handleShare = async () => {
+    if (onShare) {
+      onShare(post.id);
+      return;
+    }
+    try {
+      await Share.share({
+        message: `${post.author.full_name}'s Post on Sadhna Health Care:\n\n${post.content}`,
+      });
+    } catch (error) {
+      console.warn('Share error:', error);
+    }
   };
 
   const handleTranslateToggle = () => {
@@ -295,7 +309,7 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
           <Text style={[styles.actionText, { color: colors.textTertiary }]}>Comment</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => onShare?.(post.id)} activeOpacity={0.6}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleShare} activeOpacity={0.6}>
           <Ionicons name="share-social-outline" size={20} color={colors.textTertiary} />
           <Text style={[styles.actionText, { color: colors.textTertiary }]}>Share</Text>
         </TouchableOpacity>
