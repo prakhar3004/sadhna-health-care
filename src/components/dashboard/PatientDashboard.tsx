@@ -601,49 +601,7 @@ const parseHistoryDate = (dateStr: string): Date => {
 };
 
 const getInitialCareAlerts = (lang: string): CareAlert[] => {
-  const isHi = lang === 'hi';
-  const isHinglish = lang === 'hinglish';
-  return [
-    {
-      id: 'alert_med_low',
-      type: 'medicine',
-      title: isHi ? 'दवा स्टॉक कम है ⚠️' : isHinglish ? 'Metformin Stock Low ⚠️' : 'Metformin Stock Low ⚠️',
-      desc: isHi ? 'मेटफॉर्मिन केवल 2 बची हैं।' : isHinglish ? 'Metformin box me sirf 2 tabs bachi hain.' : 'Only 2 tablets left in your box.',
-      date: '13-Jun-2026',
-      details: isHi 
-        ? 'आपकी दैनिक मेटफॉर्मिन 500mg दवा समाप्त होने वाली है। बिना पुष्टि के खुराक छोड़ने से रक्त शर्करा (sugar) अनियंत्रित हो सकता है।' 
-        : isHinglish 
-          ? 'Metformin 500mg khatam hone wali hai. Dawa skip karne se sugar levels uncontrollable ho sakte hain.' 
-          : 'Your daily Metformin 500mg is running out. Guessing doses or skipping days can cause dangerous sugar spikes.',
-      ctaText: isHi ? 'अभी रीफिल करें 💊' : isHinglish ? 'Refill Karein 💊' : 'Refill Stock Now 💊'
-    },
-    {
-      id: 'alert_test_due',
-      type: 'test',
-      title: isHi ? 'HbA1c जांच का समय 🧪' : isHinglish ? 'HbA1c Test Due 🧪' : 'HbA1c Blood Test Due 🧪',
-      desc: isHi ? '3-महीने का औसत शुगर टेस्ट।' : isHinglish ? '3-month average sugar test checks.' : 'Diagnostic checkup scheduled this week.',
-      date: '14-Jun-2026',
-      details: isHi 
-        ? 'HbA1c परीक्षण पिछले 3 महीनों के औसत शर्करा स्तर को मापता है। साधना लैब से घर बैठे ही रक्त नमूना संग्रह बुक करें।' 
-        : isHinglish 
-          ? 'HbA1c test aapke pichle 3 months ka average sugar check karega. Sadhna Labs home sample collection book karein.' 
-          : 'HbA1c test measures average blood sugar over 3 months. Sadhna Labs home sample collection partner is available.',
-      ctaText: isHi ? 'घर पर जांच बुक करें 🏠' : isHinglish ? 'Home Test Book Karein 🏠' : 'Book Home Collection 🏠'
-    },
-    {
-      id: 'alert_appt_due',
-      type: 'appointment',
-      title: isHi ? 'डॉ. प्रिया शर्मा परामर्श लाइव 📞' : isHinglish ? 'Dr. Priya Consultation Live 📞' : 'Dr. Priya Sharma Live Call 📞',
-      desc: isHi ? 'वीडियो परामर्श आज शाम 6:30 बजे।' : isHinglish ? 'Live Video call shaam 6:30 PM baje.' : 'Video consultation today at 6:30 PM.',
-      date: '13-Jun-2026',
-      details: isHi 
-        ? 'डॉ. प्रिया शर्मा के साथ आपकी अनुवर्ती परामर्श निर्धारित है। अपने हालिया वाइटल्स (शुगर: 120, बीपी: 115) और केदारनाथ लक्ष्य की प्रगति पर चर्चा करें।' 
-        : isHinglish 
-          ? 'Dr. Priya ke sath follow-up consultation schedule hai. Apne recent vitals aur Kedarnath goal steps par discuss karein.' 
-          : 'Speak with Dr. Priya Sharma regarding your recent stable vitals log (Sugar: 120, BP: 115) and Kedarnath Goal steps progress.',
-      ctaText: isHi ? 'कॉल जॉइन करें 📞' : isHinglish ? 'Join Video Call 📞' : 'Join Video Call 📞'
-    }
-  ];
+  return [];
 };
 
 interface EmergencyRequest {
@@ -660,47 +618,7 @@ interface EmergencyRequest {
 }
 
 const getInitialEmergencyRequests = (lang: string): EmergencyRequest[] => {
-  const isHi = lang === 'hi';
-  const isHinglish = lang === 'hinglish';
-  
-  return [
-    {
-      id: 'req_1',
-      patientName: isHi ? 'सुनीता शर्मा' : 'Sunita Sharma',
-      hospital: isHi ? 'संजय गांधी आयुर्विज्ञान संस्थान (SGPGI Lucknow)' : 'SGPGI Lucknow',
-      reason: isHi ? 'कैंसर कीमोथेरेपी चक्र - 3' : isHinglish ? 'Cancer Chemotherapy Cycle 3' : 'Cancer Chemotherapy Cycle 3',
-      requiredAmount: 350000,
-      raisedAmount: 280000,
-      status: 'verified',
-      partnerNGO: isHi ? 'साधना सेवा समिति' : 'Sadhna Foundation',
-      documentName: 'chemotherapy_estimate_sgpgi.pdf',
-      date: '10-Jun-2026'
-    },
-    {
-      id: 'req_2',
-      patientName: isHi ? 'राजेश यादव' : 'Rajesh Yadav',
-      hospital: isHi ? 'अखिल भारतीय आयुर्विज्ञान संस्थान (AIIMS Delhi)' : 'AIIMS Delhi',
-      reason: isHi ? 'हार्ट बाईपास सर्जरी' : isHinglish ? 'Heart Bypass Surgery' : 'Heart Bypass Surgery',
-      requiredAmount: 500000,
-      raisedAmount: 410000,
-      status: 'verified',
-      partnerNGO: 'HelpAge India',
-      documentName: 'aiims_cardiology_estimate.pdf',
-      date: '08-Jun-2026'
-    },
-    {
-      id: 'req_3',
-      patientName: isHi ? 'अमित कुमार' : 'Amit Kumar',
-      hospital: isHi ? 'मेदांता अस्पताल (Medanta Gurugram)' : 'Medanta Hospital',
-      reason: isHi ? 'अस्थि मज्जा प्रत्यारोपण' : isHinglish ? 'Bone Marrow Transplant' : 'Bone Marrow Transplant',
-      requiredAmount: 1200000,
-      raisedAmount: 980000,
-      status: 'verified',
-      partnerNGO: 'Goonj',
-      documentName: 'bone_marrow_estimate.pdf',
-      date: '05-Jun-2026'
-    }
-  ];
+  return [];
 };
 
 const getInitialLifeGoals = (lang: string): LifeGoal[] => {
@@ -1091,34 +1009,12 @@ export function PatientDashboard() {
         }
 
         // 4. Load SOS Contacts via ApiService
-        const defaultSosContacts = [
-          { id: '1', name: 'Ramesh (Son)', relation: 'Son', phone: '9876543210' },
-          { id: '2', name: 'Dr. Priya Sharma', relation: 'Doctor', phone: '9123456789' }
-        ];
+        const defaultSosContacts: any[] = [];
         const fetchedSosContacts = await ApiService.fetchSosContacts(patientId, defaultSosContacts);
         setSosContacts(fetchedSosContacts);
 
         // 5. Load Treatment History via ApiService
-        const defaultHistory: HistoryItem[] = [
-          { 
-            id: 'hist_1', 
-            type: 'report', 
-            title: 'CBC Blood Report / सीबीसी रक्त रिपोर्ट', 
-            date: '12-Jun-2026', 
-            details: 'Hemoglobin: 13.5 g/dL, WBC: 7500 /uL. Platelets normal. Blood parameters look stable.', 
-            fileName: 'cbc_blood_report_june.pdf',
-            hospital: 'Sadhna Diagnostics Lab'
-          },
-          { 
-            id: 'hist_2', 
-            type: 'prescription', 
-            title: 'First Oncology Consult / प्रथम कैंसर परामर्श पर्चा', 
-            date: '10-Jun-2026', 
-            details: 'Consultation with Dr. Priya Sharma. Formulated baseline care, initialized hope goals, and prescribed Metformin.', 
-            fileName: 'consultation_parcha_dr_priya.png',
-            hospital: 'City Oncology Hospital'
-          }
-        ];
+        const defaultHistory: HistoryItem[] = [];
         const fetchedHistory = await ApiService.fetchTreatmentHistory(patientId, defaultHistory);
         setTreatmentHistory(fetchedHistory);
 

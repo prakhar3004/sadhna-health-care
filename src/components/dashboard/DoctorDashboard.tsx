@@ -109,32 +109,7 @@ export function DoctorDashboard() {
       setVitalsAlerts(alerts);
 
       // 4. Fetch Seva emergency funding requests awaiting review
-      const defaultRequests: EmergencyRequestRecord[] = [
-        {
-          id: 'req1',
-          patientName: 'Rahul Verma',
-          hospital: 'Apollo Hospitals, Bangalore',
-          reason: 'Emergency Diabetic Ketoacidosis (DKA) Treatment & ICU Care',
-          requiredAmount: 150000,
-          raisedAmount: 45000,
-          status: 'pending',
-          partnerNGO: 'Care Foundation India',
-          documentName: 'medical_certificate.pdf',
-          date: '2024-06-13',
-        },
-        {
-          id: 'req2',
-          patientName: 'Meera Joshi',
-          hospital: 'Tata Memorial Hospital, Mumbai',
-          reason: 'Chemotherapy Session 4 & Oncological Support',
-          requiredAmount: 250000,
-          raisedAmount: 180000,
-          status: 'pending',
-          partnerNGO: 'Cancer Relief Society',
-          documentName: 'oncology_prescription.pdf',
-          date: '2024-06-12',
-        },
-      ];
+      const defaultRequests: EmergencyRequestRecord[] = [];
       const reqs = await ApiService.fetchEmergencyRequests(defaultRequests);
       setEmergencyRequests(reqs.filter((r) => r.status === 'pending'));
     } catch (e) {
