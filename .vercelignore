@@ -1,0 +1,11 @@
+node_modules
+android
+ios
+.git
+.expo
+.next
+dist
+build
+.gradle
+.idea
+*.apk
