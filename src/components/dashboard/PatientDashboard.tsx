@@ -2007,14 +2007,9 @@ export function PatientDashboard() {
       {vis('life_goal_quest') && (
       <Card style={[styles.goalCard, { backgroundColor: colors.primaryFaded, borderColor: colors.primary }]}>
         <View style={styles.goalHeader}>
-          <View style={{ flex: 1, marginRight: Spacing.md }}>
-            <Text style={[styles.goalTitleTag, { color: colors.primary }]}>
-              {getUiText('wajah_title')}
-            </Text>
-            <Text style={[styles.goalMainText, { color: colors.text }]}>
-              "{goalText?.replace(/\\n/g, ' ').replace(/\r?\n|\r/g, ' ').replace(/\s+/g, ' ').trim()}"
-            </Text>
-          </View>
+          <Text style={[styles.goalTitleTag, { color: colors.primary }]}>
+            {getUiText('wajah_title')}
+          </Text>
           <TouchableOpacity
             style={[styles.editGoalBtn, { backgroundColor: colors.surface }]}
             onPress={() => {
@@ -2028,6 +2023,10 @@ export function PatientDashboard() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        <Text style={[styles.goalMainText, { color: colors.text, marginTop: Spacing.sm }]}>
+          "{goalText?.replace(/\\n/g, ' ').replace(/\r?\n|\r/g, ' ').replace(/\s+/g, ' ').trim()}"
+        </Text>
 
         {/* Progress Ring / Bar */}
         <View style={styles.progressSection}>
