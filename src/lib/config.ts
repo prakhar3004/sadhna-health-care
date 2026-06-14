@@ -30,5 +30,15 @@ export const isSupabaseConfigured = (): boolean => {
   );
 };
 
+let activeUserId: string | null = null;
+
+export const setActiveUserIdForDemo = (id: string | null) => {
+  activeUserId = id;
+};
+
 /** Inverse of {@link isSupabaseConfigured}: local/demo mode with no live backend. */
-export const isDemoMode = (): boolean => !isSupabaseConfigured();
+export const isDemoMode = (): boolean => {
+  if (!isSupabaseConfigured()) return true;
+  if (activeUserId === '1' || activeUserId === '2' || activeUserId === '3') return true;
+  return false;
+};

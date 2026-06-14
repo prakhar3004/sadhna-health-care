@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { Profile } from '@/src/types';
 import { UserRole } from '@/src/utils/constants';
 import { supabase } from '@/src/lib/supabase';
-import { isDemoMode } from '@/src/lib/config';
+import { isDemoMode, setActiveUserIdForDemo } from '@/src/lib/config';
 
 interface AuthState {
   user: Profile | null;
@@ -92,17 +92,25 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   isLoading: true, // Start in loading state for checking initial session on mount
 
-  setUser: (user) => set({ user, isAuthenticated: !!user }),
+  setUser: (user) => {
+    setActiveUserIdForDemo(user ? user.id : null);
+    set({ user, isAuthenticated: !!user });
+  },
 
   login: async (email: string, password: string) => {
     set({ isLoading: true });
 
-    if (isDemoMode()) {
+    const emailLower = email.toLowerCase();
+    const isTestEmail = emailLower.endsWith('@test.com');
+
+    if (isDemoMode() || isTestEmail) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      const mockUser = MOCK_USERS[email.toLowerCase()];
+      const mockUser = MOCK_USERS[emailLower];
       if (mockUser) {
+        setActiveUserIdForDemo(mockUser.id);
         set({ user: mockUser, isAuthenticated: true, isLoading: false });
       } else {
+        setActiveUserIdForDemo(MOCK_USERS['doctor@test.com'].id);
         set({ user: MOCK_USERS['doctor@test.com'], isAuthenticated: true, isLoading: false });
       }
       return;
@@ -162,10 +170,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (email: string, password: string, fullName: string, role: UserRole) => {
     set({ isLoading: true });
 
-    if (isDemoMode()) {
+    const emailLower = email.toLowerCase();
+    const isTestEmail = emailLower.endsWith('@test.com');
+
+    if (isDemoMode() || isTestEmail) {
       await new Promise((resolve) => setTimeout(resolve, 1200));
       const newUser: Profile = {
-        id: Date.now().toString(),
+        id: (role === 'doctor' ? '1' : role === 'caregiver' ? '2' : '3'),
         role,
         full_name: fullName,
         username: fullName.toLowerCase().replace(/\s+/g, '.'),
@@ -184,6 +195,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+      setActiveUserIdForDemo(newUser.id);
       set({ user: newUser, isAuthenticated: true, isLoading: false });
       return;
     }
@@ -239,6 +251,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (err) {
       console.warn('Error during Supabase signout, clearing local state anyway:', err);
     }
+    setActiveUserIdForDemo(null);
     set({ user: null, isAuthenticated: false, isLoading: false });
   },
 
