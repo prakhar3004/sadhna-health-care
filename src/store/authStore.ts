@@ -1,9 +1,45 @@
 // Sadhna Health Care — Auth Store (Zustand)
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Profile } from '@/src/types';
 import { UserRole } from '@/src/utils/constants';
 import { supabase } from '@/src/lib/supabase';
 import { isDemoMode, setActiveUserForDemo, isSupabaseConfigured } from '@/src/lib/config';
+
+const SESSION_KEY = 'sadhna_user_session';
+
+const getLocalSession = async (): Promise<Profile | null> => {
+  try {
+    const data = typeof window !== 'undefined'
+      ? window.localStorage.getItem(SESSION_KEY)
+      : await AsyncStorage.getItem(SESSION_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch (err) {
+    console.error('Error reading local session:', err);
+    return null;
+  }
+};
+
+const saveLocalSession = async (user: Profile | null): Promise<void> => {
+  try {
+    if (user) {
+      const data = JSON.stringify(user);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(SESSION_KEY, data);
+      } else {
+        await AsyncStorage.setItem(SESSION_KEY, data);
+      }
+    } else {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(SESSION_KEY);
+      } else {
+        await AsyncStorage.removeItem(SESSION_KEY);
+      }
+    }
+  } catch (err) {
+    console.error('Error saving local session:', err);
+  }
+};
 
 interface AuthState {
   user: Profile | null;
@@ -94,6 +130,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setUser: (user) => {
     setActiveUserForDemo(user ? user.id : null, null);
+    saveLocalSession(user);
     set({ user, isAuthenticated: !!user });
   },
 
@@ -166,7 +203,9 @@ export const useAuthStore = create<AuthState>((set) => ({
             .single();
 
           if (!profileError && profile) {
-            set({ user: profile as Profile, isAuthenticated: true, isLoading: false });
+            const userProfile = profile as Profile;
+            saveLocalSession(userProfile);
+            set({ user: userProfile, isAuthenticated: true, isLoading: false });
           } else {
             // Fallback metadata
             const metadata = data.user.user_metadata || {};
@@ -191,6 +230,7 @@ export const useAuthStore = create<AuthState>((set) => ({
               updated_at: new Date().toISOString(),
               is_profile_complete: true,
             };
+            saveLocalSession(fallbackProfile);
             set({ user: fallbackProfile, isAuthenticated: true, isLoading: false });
           }
           return;
@@ -199,6 +239,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         console.error('Test email auto-login/signup error:', err);
         // Fallback to client-only demo state if database action fails
         const mockUser = MOCK_USERS[emailLower] || MOCK_USERS['doctor@test.com'];
+        saveLocalSession(mockUser);
         set({ user: mockUser, isAuthenticated: true, isLoading: false });
         return;
       }
@@ -209,9 +250,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       const mockUser = MOCK_USERS[emailLower];
       if (mockUser) {
         setActiveUserForDemo(mockUser.id, emailLower);
+        saveLocalSession(mockUser);
         set({ user: mockUser, isAuthenticated: true, isLoading: false });
       } else {
         setActiveUserForDemo(MOCK_USERS['doctor@test.com'].id, 'doctor@test.com');
+        saveLocalSession(MOCK_USERS['doctor@test.com']);
         set({ user: MOCK_USERS['doctor@test.com'], isAuthenticated: true, isLoading: false });
       }
       return;
@@ -234,7 +277,9 @@ export const useAuthStore = create<AuthState>((set) => ({
           .single();
 
         if (!profileError && profile) {
-          set({ user: profile as Profile, isAuthenticated: true, isLoading: false });
+          const userProfile = profile as Profile;
+          saveLocalSession(userProfile);
+          set({ user: userProfile, isAuthenticated: true, isLoading: false });
         } else {
           // Fallback to metadata if profile row isn't created yet
           const metadata = data.user.user_metadata || {};
@@ -259,6 +304,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             updated_at: new Date().toISOString(),
             is_profile_complete: false,
           };
+          saveLocalSession(fallbackProfile);
           set({ user: fallbackProfile, isAuthenticated: true, isLoading: false });
         }
       }
@@ -296,6 +342,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         updated_at: new Date().toISOString(),
       };
       setActiveUserForDemo(newUser.id, emailLower);
+      saveLocalSession(newUser);
       set({ user: newUser, isAuthenticated: true, isLoading: false });
       return;
     }
@@ -336,6 +383,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           created_at: data.user.created_at,
           updated_at: new Date().toISOString(),
         };
+        saveLocalSession(newUserProfile);
         set({ user: newUserProfile, isAuthenticated: true, isLoading: false });
       }
     } catch (err) {
@@ -352,6 +400,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       console.warn('Error during Supabase signout, clearing local state anyway:', err);
     }
     setActiveUserForDemo(null, null);
+    saveLocalSession(null);
     set({ user: null, isAuthenticated: false, isLoading: false });
   },
 
@@ -360,26 +409,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialize: () => {
     set({ isLoading: true });
 
-    // Skip the auth listener entirely when there is no live backend configured.
-    if (isDemoMode()) {
-      set({ isLoading: false });
-      return () => {};
-    }
+    let isSubscribed = true;
+    let subscription: any = null;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Signed out OR token refresh failed / session expired → clear state.
+    const isMockUserId = (id: string) => id === '1' || id === '2' || id === '3';
+
+    // Helper to fetch and load profile from session
+    const loadProfileFromSession = async (session: any) => {
       if (!session) {
-        set({ user: null, isAuthenticated: false, isLoading: false });
+        saveLocalSession(null);
+        if (isSubscribed) {
+          set({ user: null, isAuthenticated: false, isLoading: false });
+        }
         return;
       }
 
-      // Token silently refreshed and we already have the profile → nothing to reload.
-      if (event === 'TOKEN_REFRESHED' && useAuthStore.getState().user) {
-        set({ isLoading: false });
-        return;
-      }
-
-      // SIGNED_IN / INITIAL_SESSION / USER_UPDATED → (re)load the profile.
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -387,7 +431,10 @@ export const useAuthStore = create<AuthState>((set) => ({
           .eq('id', session.user.id)
           .single();
 
+        if (!isSubscribed) return;
+
         if (profile && !error) {
+          saveLocalSession(profile as Profile);
           set({ user: profile as Profile, isAuthenticated: true, isLoading: false });
         } else {
           // Read from Auth metadata if the profiles row doesn't exist yet.
@@ -413,16 +460,88 @@ export const useAuthStore = create<AuthState>((set) => ({
             updated_at: new Date().toISOString(),
             is_profile_complete: false,
           };
+          saveLocalSession(fallbackProfile);
           set({ user: fallbackProfile, isAuthenticated: true, isLoading: false });
         }
       } catch (err) {
         console.error('Auth state profile fetch error:', err);
-        set({ isLoading: false });
+        if (isSubscribed) {
+          set({ isLoading: false });
+        }
       }
-    });
+    };
+
+    // Main initialization flow
+    const runInit = async () => {
+      // 1. Restore the local user session immediately to prevent flash of login screen
+      const localUser = await getLocalSession();
+      if (!isSubscribed) return;
+
+      if (localUser) {
+        setActiveUserForDemo(localUser.id, localUser.username + '@test.com');
+        set({ user: localUser, isAuthenticated: true, isLoading: false });
+      }
+
+      // 2. If we are in demo mode or if the local session is a mock user, we are done
+      if (isDemoMode() || (localUser && isMockUserId(localUser.id))) {
+        if (!localUser) {
+          set({ isLoading: false });
+        }
+        return;
+      }
+
+      // 3. Otherwise, check the actual Supabase session state
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isSubscribed) return;
+
+        if (session) {
+          await loadProfileFromSession(session);
+        } else {
+          // If Supabase has no session, clear the local session and set loading to false
+          saveLocalSession(null);
+          set({ user: null, isAuthenticated: false, isLoading: false });
+        }
+      } catch (err) {
+        console.error('Failed to get initial Supabase session:', err);
+        if (!localUser) {
+          set({ isLoading: false });
+        }
+      }
+
+      if (!isSubscribed) return;
+
+      // 4. Subscribe to subsequent auth state changes
+      const { data: { subscription: sub } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!isSubscribed) return;
+
+        // Signed out OR session expired → clear state.
+        if (!session) {
+          saveLocalSession(null);
+          set({ user: null, isAuthenticated: false, isLoading: false });
+          return;
+        }
+
+        // Token silently refreshed and we already have the profile → nothing to reload.
+        if (event === 'TOKEN_REFRESHED' && useAuthStore.getState().user) {
+          set({ isLoading: false });
+          return;
+        }
+
+        // Handle SIGNED_IN / USER_UPDATED / TOKEN_REFRESHED
+        await loadProfileFromSession(session);
+      });
+
+      subscription = sub;
+    };
+
+    runInit();
 
     return () => {
-      subscription.unsubscribe();
+      isSubscribed = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
     };
   },
 
@@ -442,6 +561,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     if (isDemoMode()) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
+      saveLocalSession(updatedUser);
       set({ user: updatedUser, isAuthenticated: true, isLoading: false });
       return;
     }
@@ -458,6 +578,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       if (error) throw error;
 
+      saveLocalSession(updatedUser);
       set({ user: updatedUser, isAuthenticated: true, isLoading: false });
     } catch (err) {
       set({ isLoading: false });

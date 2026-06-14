@@ -12,34 +12,53 @@ if (!isSupabaseConfigured()) {
 }
 
 // Custom storage wrapper to prevent SSR crash in Node.js (ReferenceError: window is not defined)
-const isBrowser = typeof window !== 'undefined';
 const customStorage = {
-  getItem: async (key: string): Promise<string | null> => {
-    if (isBrowser) {
+  getItem: (key: string): string | null | Promise<string | null> => {
+    if (typeof window !== 'undefined') {
       try {
-        return await AsyncStorage.getItem(key);
+        return window.localStorage.getItem(key);
       } catch (err) {
-        console.error('Error reading auth token:', err);
+        console.error('Error reading from localStorage:', err);
+        return null;
       }
     }
-    return null;
-  },
-  setItem: async (key: string, value: string): Promise<void> => {
-    if (isBrowser) {
-      try {
-        await AsyncStorage.setItem(key, value);
-      } catch (err) {
-        console.error('Error saving auth token:', err);
-      }
+    try {
+      return AsyncStorage.getItem(key);
+    } catch (err) {
+      console.error('Error reading from AsyncStorage:', err);
+      return null;
     }
   },
-  removeItem: async (key: string): Promise<void> => {
-    if (isBrowser) {
+  setItem: (key: string, value: string): void | Promise<void> => {
+    if (typeof window !== 'undefined') {
       try {
-        await AsyncStorage.removeItem(key);
+        window.localStorage.setItem(key, value);
+        return;
       } catch (err) {
-        console.error('Error removing auth token:', err);
+        console.error('Error writing to localStorage:', err);
+        return;
       }
+    }
+    try {
+      return AsyncStorage.setItem(key, value);
+    } catch (err) {
+      console.error('Error writing to AsyncStorage:', err);
+    }
+  },
+  removeItem: (key: string): void | Promise<void> => {
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem(key);
+        return;
+      } catch (err) {
+        console.error('Error removing from localStorage:', err);
+        return;
+      }
+    }
+    try {
+      return AsyncStorage.removeItem(key);
+    } catch (err) {
+      console.error('Error removing from AsyncStorage:', err);
     }
   },
 };
@@ -47,8 +66,8 @@ const customStorage = {
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: customStorage,
-    autoRefreshToken: isBrowser, // Only refresh tokens on the client
-    persistSession: isBrowser, // Only persist sessions on the client
+    autoRefreshToken: typeof window !== 'undefined', // Only refresh tokens on the client
+    persistSession: typeof window !== 'undefined', // Only persist sessions on the client
     detectSessionInUrl: false,
   },
 });
