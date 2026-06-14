@@ -252,7 +252,7 @@ export default function HomeFeedScreen() {
       <View style={[styles.header, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
         <View style={styles.headerLeft}>
           <Image
-            source={require('../../assets/images/logo.png')}
+            source={require('../../assets/images/logo_icon.png')}
             style={styles.logoMiniImage}
             resizeMode="contain"
           />

@@ -1,4 +1,4 @@
-// Sadhna Health Care — Translations Dictionary
+// SadhnaCircle — Translations Dictionary
 export type Language =
   | 'en'
   | 'hi'
@@ -16,7 +16,7 @@ export type Language =
 export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   en: {
     // Auth - General
-    app_name: 'Sadhna Health Care',
+    app_name: 'SadhnaCircle',
     login_title: 'Welcome Back',
     login_subtitle: 'Sign in to connect with your care community',
     email_label: 'Email Address',
@@ -25,7 +25,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     password_placeholder: 'Enter your password',
     sign_in_btn: 'Sign In',
     register_title: 'Create Account',
-    register_subtitle: 'Join the Sadhna Health Care community',
+    register_subtitle: 'Join the SadhnaCircle community',
     full_name_label: 'Full Name',
     full_name_placeholder: 'Enter your full name',
     i_am_a: 'I am a...',
@@ -115,7 +115,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   hi: {
     // Auth - General
-    app_name: 'साधना हेल्थ केयर',
+    app_name: 'साधना सर्कल',
     login_title: 'वापसी पर स्वागत है',
     login_subtitle: 'अपने केयर कम्युनिटी से जुड़ने के लिए साइन इन करें',
     email_label: 'ईमेल एड्रेस',
@@ -124,7 +124,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     password_placeholder: 'अपना पासवर्ड दर्ज करें',
     sign_in_btn: 'साइन इन करें',
     register_title: 'खाता बनाएं',
-    register_subtitle: 'साधना हेल्थ केयर कम्युनिटी में शामिल हों',
+    register_subtitle: 'साधना सर्कल कम्युनिटी में शामिल हों',
     full_name_label: 'पूरा नाम',
     full_name_placeholder: 'अपना पूरा नाम दर्ज करें',
     i_am_a: 'मैं एक...',
@@ -214,7 +214,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   hinglish: {
     // Auth - General
-    app_name: 'Sadhna Health Care',
+    app_name: 'SadhnaCircle',
     login_title: 'Welcome Back',
     login_subtitle: 'Apne care community se judne ke liye login karein',
     email_label: 'Email Address',
@@ -223,7 +223,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     password_placeholder: 'Apna password daalein',
     sign_in_btn: 'Login Karein',
     register_title: 'Account Banayein',
-    register_subtitle: 'Sadhna Health Care community join karein',
+    register_subtitle: 'SadhnaCircle community join karein',
     full_name_label: 'Pura Naam',
     full_name_placeholder: 'Apna pura naam likhein',
     i_am_a: 'Main ek...',
@@ -313,7 +313,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   bn: {
     // Bengali (বাংলা)
-    app_name: 'সাধনা হেলথ কেয়ার',
+    app_name: 'সাধনা সার্কেল',
     login_title: 'স্বাগতম',
     login_subtitle: 'আপনার কেয়ার কমিউনিটির সাথে যুক্ত হতে লগইন করুন',
     email_label: 'ইমেল অ্যাড্রেস',
@@ -322,7 +322,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     password_placeholder: 'আপনার পাসওয়ার্ড লিখুন',
     sign_in_btn: 'সাইন ইন করুন',
     register_title: 'অ্যাকাউন্ট তৈরি করুন',
-    register_subtitle: 'সাধনা হেলথ কেয়ার কমিউনিটিতে যোগ দিন',
+    register_subtitle: 'সাধনা সার্কেল কমিউনিটিতে যোগ দিন',
     full_name_label: 'পুরো নাম',
     full_name_placeholder: 'আপনার পুরো নাম লিখুন',
     i_am_a: 'আমি একজন...',
@@ -412,7 +412,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   te: {
     // Telugu (తెలుగు)
-    app_name: 'సాధన హెల్త్ కేర్',
+    app_name: 'సాధన సర్కిల్',
     login_title: 'స్వాగతం',
     login_subtitle: 'మీ కేర్ కమ్యూనిటీతో కనెక్ట్ కావడానికి లాగిన్ అవ్వండి',
     email_label: 'ఈమెయిల్ అడ్రస్',
@@ -421,7 +421,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     password_placeholder: 'మీ పాస్‌వర్డ్ నమోదు చేయండి',
     sign_in_btn: 'లాగిన్ అవ్వండి',
     register_title: 'ఖాతాను సృష్టించండి',
-    register_subtitle: 'సాధన హెల్త్ కేర్ కమ్యూనిటీలో చేరండి',
+    register_subtitle: 'సాధన సర్కిల్ కమ్యూనిటీలో చేరండి',
     full_name_label: 'పూర్తి పేరు',
     full_name_placeholder: 'మీ పూర్తి పేరు నమోదు చేయండి',
     i_am_a: 'నేను ఒక...',
@@ -511,7 +511,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   mr: {
     // Marathi (मराठी)
-    app_name: 'साधना हेल्थ केअर',
+    app_name: 'साधना सर्कल',
     login_title: 'स्वागत आहे',
     login_subtitle: 'आपल्या केअर कम्युनिटीमध्ये सामील होण्यासाठी लॉगिन करा',
     email_label: 'ईमेल पत्ता',
@@ -520,7 +520,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     password_placeholder: 'आपला पासवर्ड प्रविष्ट करा',
     sign_in_btn: 'लॉगिन करा',
     register_title: 'खाते तयार करा',
-    register_subtitle: 'साधना हेल्थ केअर कम्युनिटीमध्ये सामील व्हा',
+    register_subtitle: 'साधना सर्कल कम्युनिटीमध्ये सामील व्हा',
     full_name_label: 'पूर्ण नाव',
     full_name_placeholder: 'आपले पूर्ण नाव प्रविष्ट करा',
     i_am_a: 'मी एक...',
@@ -610,7 +610,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   ta: {
     // Tamil (தமிழ்)
-    app_name: 'சாதனா ஹெல்த் கேர்',
+    app_name: 'சாதனா சர்க்கிள்',
     login_title: 'வரவேற்கிறோம்',
     login_subtitle: 'உங்கள் பராமரிப்பு சமூகத்துடன் இணைய உள்நுழையவும்',
     email_label: 'மின்னஞ்சல் முகவரி',
@@ -619,7 +619,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     password_placeholder: 'உங்கள் கடவுச்சொல்லை உள்ளிடவும்',
     sign_in_btn: 'உள்நுழைக',
     register_title: 'கணக்கை உருவாக்கவும்',
-    register_subtitle: 'சாதனா ஹெல்த் கேர் சமூகத்தில் இணையுங்கள்',
+    register_subtitle: 'சாதனா சர்க்கிள் சமூகத்தில் இணையுங்கள்',
     full_name_label: 'முழு பெயர்',
     full_name_placeholder: 'உங்கள் முழு பெயரை உள்ளிடவும்',
     i_am_a: 'நான் ஒரு...',
@@ -709,7 +709,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   gu: {
     // Gujarati (ગુજરાતી)
-    app_name: 'સાધના હેલ્થ કેર',
+    app_name: 'સાધના સર્કલ',
     login_title: 'સ્વાગત છે',
     login_subtitle: 'તમારા કેર સમુદાય સાથે જોડાવા માટે સાઇન ઇન કરો',
     email_label: 'ઇમેઇલ સરનામું',
@@ -718,7 +718,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     password_placeholder: 'તમારો પાસવર્ડ દાખલ કરો',
     sign_in_btn: 'સાઇન ઇન કરો',
     register_title: 'ખાતું બનાવો',
-    register_subtitle: 'સાધના હેલ્થ કેર સમુદાયમાં જોડાઓ',
+    register_subtitle: 'સાધના સર્કલ સમુદાયમાં જોડાઓ',
     full_name_label: 'પૂરું નામ',
     full_name_placeholder: 'તમારું પૂરું નામ દાખલ કરો',
     i_am_a: 'હું એક...',
@@ -808,7 +808,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   kn: {
     // Kannada (ಕನ್ನಡ)
-    app_name: 'ಸಾಧನಾ ಹೆಲ್ತ್ ಕೇರ್',
+    app_name: 'ಸಾಧನಾ ಸರ್ಕಲ್',
     login_title: 'ಸ್ವಾಗತ',
     login_subtitle: 'ನಿಮ್ಮ ಆರೈಕೆ ಸಮುದಾಯದೊಂದಿಗೆ ಸಂಪರ್ಕ ಸಾಧಿಸಲು ಲಾಗಿನ್ ಮಾಡಿ',
     email_label: 'ಇಮೇಲ್ ವಿಳಾಸ',
@@ -817,7 +817,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     password_placeholder: 'ನಿಮ್ಮ ಪಾಸ್ವರ್ಡ್ ನಮೂದಿಸಿ',
     sign_in_btn: 'ಲಾಗಿನ್ ಮಾಡಿ',
     register_title: 'ಖಾತೆ ರಚಿಸಿ',
-    register_subtitle: 'ಸಾಧನಾ ಹೆಲ್ತ್ ಕೇರ್ ಸಮುದಾಯಕ್ಕೆ ಸೇರಿ',
+    register_subtitle: 'ಸಾಧನಾ ಸರ್ಕಲ್ ಸಮುದಾಯಕ್ಕೆ ಸೇರಿ',
     full_name_label: 'ಪೂರ್ಣ ಹೆಸರು',
     full_name_placeholder: 'ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರು ನಮೂದಿಸಿ',
     i_am_a: 'ನಾನು...',
@@ -907,7 +907,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   ml: {
     // Malayalam (മലയാളം)
-    app_name: 'സാധന ഹെൽത്ത് കെയർ',
+    app_name: 'സാധന സർക്കിൾ',
     login_title: 'സ്വാഗതം',
     login_subtitle: 'നിങ്ങളുടെ പരിചരണ കമ്മ്യൂണിറ്റിയുമായി ബന്ധപ്പെടാൻ സൈൻ ഇൻ ചെയ്യുക',
     email_label: 'ഇമെയിൽ വിലാസം',
@@ -916,7 +916,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     password_placeholder: 'പാസ്‌വേഡ് നൽകുക',
     sign_in_btn: 'സൈൻ ഇൻ ചെയ്യുക',
     register_title: 'അക്കൗണ്ട് സൃഷ്ടിക്കുക',
-    register_subtitle: 'സാധന ഹെൽത്ത് കെയർ കമ്മ്യൂണിറ്റിയിൽ ചേരുക',
+    register_subtitle: 'സാധന സർക്കിൾ കമ്മ്യൂണിറ്റിയിൽ ചേരുക',
     full_name_label: 'പൂർണ്ണനാമം',
     full_name_placeholder: 'നിങ്ങളുടെ പൂർണ്ണനാമം നൽകുക',
     i_am_a: 'ഞാൻ ഒരു...',
@@ -1006,7 +1006,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   pa: {
     // Punjabi (ਪੰਜਾਬੀ)
-    app_name: 'ਸਾਧਨਾ ਹੈਲਥ ਕੇਅਰ',
+    app_name: 'ਸਾਧਨਾ ਸਰਕਲ',
     login_title: 'ਜੀ ਆਇਆਂ ਨੂੰ',
     login_subtitle: 'ਆਪਣੀ ਕੇਅਰ ਕਮਿਊਨਿਟੀ ਨਾਲ ਜੁੜਨ ਲਈ ਸਾਈਨ ਇਨ ਕਰੋ',
     email_label: 'ਈਮੇਲ ਪਤਾ',
@@ -1015,7 +1015,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     password_placeholder: 'ਆਪਣਾ ਪਾਸਵਰਡ ਦਰਜ ਕਰੋ',
     sign_in_btn: 'ਸਾਈਨ ਇਨ ਕਰੋ',
     register_title: 'ਖਾਤਾ ਬਣਾਓ',
-    register_subtitle: 'ਸਾਧਨਾ ਹੈਲਥ ਕੇਅਰ ਕਮਿਊਨਿਟੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਵੋ',
+    register_subtitle: 'ਸਾਧਨਾ ਸਰਕਲ ਕਮਿਊਨਿਟੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਵੋ',
     full_name_label: 'ਪੂਰਾ ਨਾਮ',
     full_name_placeholder: 'ਆਪਣਾ ਪੂਰਾ ਨਾਮ ਦਰਜ ਕਰੋ',
     i_am_a: 'ਮੈਂ ਹਾਂ ਇੱਕ...',

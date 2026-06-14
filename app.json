@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Sadhna Health Care",
-    "slug": "sadhna-health-care",
+    "name": "SadhnaCircle",
+    "slug": "sadhna-circle",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "sadhna-health",
+    "scheme": "sadhna-circle",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,

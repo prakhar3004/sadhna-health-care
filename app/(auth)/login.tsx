@@ -70,7 +70,7 @@ export default function LoginScreen() {
           {/* Hero Section */}
           <View style={styles.hero}>
             <Image
-              source={require('../../assets/images/logo.png')}
+              source={require('../../assets/images/logo_icon.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
