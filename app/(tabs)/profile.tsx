@@ -393,7 +393,7 @@ export default function ProfileScreen() {
             size="md"
             icon="create-outline"
             fullWidth
-            onPress={() => {}}
+            onPress={() => router.push('/(auth)/profile-setup' as any)}
             style={{ marginTop: Spacing.base }}
           />
         </View>

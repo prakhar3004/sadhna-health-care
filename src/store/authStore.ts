@@ -622,3 +622,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 }));
+
+// Subscribe to sync activeUserId with config.ts automatically
+useAuthStore.subscribe((state) => {
+  setActiveUserForDemo(state.user ? state.user.id : null, null);
+});

@@ -57,6 +57,37 @@ export default function ProfileSetupScreen() {
   const [emergencyName, setEmergencyName] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
 
+  // Populate state when user becomes available (useful when session is restored asynchronously)
+  React.useEffect(() => {
+    if (user) {
+      setBio(user.bio || '');
+      setPhone(user.phone || '');
+      setLocation(user.location || '');
+      if (user.role === 'doctor') {
+        if (user.specialization) setSpecialization(user.specialization);
+        if (user.license_number) {
+          setLicenseNumber(user.license_number);
+          setDocUploaded(true);
+          setDocName('medical_license_certificate.pdf');
+        }
+        if (user.experience_years) setExperienceYears(user.experience_years.toString());
+      } else if (user.role === 'caregiver') {
+        if (user.caregiver_type) setCaregiverType(user.caregiver_type);
+        if (user.license_number) {
+          setLicenseNumber(user.license_number);
+          setDocUploaded(true);
+          setDocName('nursing_license_reg.pdf');
+        }
+        if (user.experience_years) setExperienceYears(user.experience_years.toString());
+        if (user.relation_to_patient) setRelationToPatient(user.relation_to_patient);
+        if (user.associated_patient_username) setAssociatedPatientUsername(user.associated_patient_username);
+      } else if (user.role === 'patient') {
+        if (user.patient_id_card_number) setPatientIdCard(user.patient_id_card_number);
+        if (user.chronic_condition) setChronicCondition(user.chronic_condition);
+      }
+    }
+  }, [user]);
+
   if (!user) return null;
 
   const handleDocUpload = () => {

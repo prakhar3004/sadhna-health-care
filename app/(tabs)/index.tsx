@@ -216,7 +216,11 @@ export default function HomeFeedScreen() {
       </View>
 
       {/* Feed Filter Chips */}
-      <View style={styles.filterChips}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterChips}
+      >
         {filterChips.map((chip) => {
           const isActive = selectedFilter === chip.key;
           return (
@@ -242,7 +246,7 @@ export default function HomeFeedScreen() {
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 

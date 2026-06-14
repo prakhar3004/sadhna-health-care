@@ -37,10 +37,16 @@ export const setActiveUserForDemo = (id: string | null, email: string | null) =>
   activeUserEmail = email;
 };
 
+const MOCK_USER_IDS = ['1', '2', '3', '4', '5', '6', '7'];
+
 /**
  * Returns true if Supabase is not configured, or if the active user is a demo user.
  * This ensures demo logins work seamlessly even in live production builds.
  */
 export const isDemoMode = (): boolean => {
-  return !isSupabaseConfigured();
+  if (!isSupabaseConfigured()) return true;
+  if (activeUserId && MOCK_USER_IDS.includes(activeUserId)) {
+    return true;
+  }
+  return false;
 };
