@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Tabs, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/src/hooks/useTheme';
 import { useLanguageStore } from '@/src/store/languageStore';
 import { useAuthStore } from '@/src/store/authStore';
@@ -15,6 +16,7 @@ export default function TabLayout() {
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
+  const insets = useSafeAreaInsets();
 
   // Total unread messages, driven by the same source as the Messages screen.
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -37,7 +39,7 @@ export default function TabLayout() {
       hi: { home: 'होम', discover: 'खोजें', visits: 'अपॉइंटमेंट', messages: 'संदेश', profile: 'प्रोफ़ाइल' },
       hinglish: { home: 'Home', discover: 'Discover', visits: 'Visits', messages: 'Messages', profile: 'Profile' },
       bn: { home: 'হোম', discover: 'অনুসন্ধান', visits: 'পরিদর্শন', messages: 'বার্তা', profile: 'প্রোফাইল' },
-      te: { home: 'హోమ్', discover: 'కనుగొనండి', visits: 'సందర్శనలు', messages: 'సندేశాలు', profile: 'ప్రొఫైల్' },
+      te: { home: 'హోమ్', discover: 'కనుగొనండి', visits: 'సందర్శనలు', messages: 'సందేశాలు', profile: 'ప్రొఫైల్' },
       mr: { home: 'होम', discover: 'शोध', visits: 'भेटी', messages: 'संदेश', profile: 'प्रोफाइल' },
       ta: { home: 'முகப்பு', discover: 'கண்டறிக', visits: 'வருகைகள்', messages: 'செய்திகள்', profile: 'சுயவிவரம்' },
       gu: { home: 'હોમ', discover: 'શોધો', visits: 'મુલાકાતો', messages: 'સંદેશા', profile: 'પ્રોફાઇલ' },
@@ -66,8 +68,8 @@ export default function TabLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.borderLight,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 88 : 72,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+          height: Platform.OS === 'ios' ? (60 + insets.bottom) : (64 + insets.bottom),
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
           paddingTop: 8,
           elevation: 8,
           shadowColor: colors.shadow,
