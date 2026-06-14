@@ -2004,7 +2004,7 @@ export function PatientDashboard() {
               {getUiText('wajah_title')}
             </Text>
             <Text style={[styles.goalMainText, { color: colors.text }]}>
-              "{goalText}"
+              "{goalText?.replace(/\r?\n|\r/g, ' ')}"
             </Text>
           </View>
           <TouchableOpacity
@@ -4264,6 +4264,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    width: '100%',
   },
   goalTitleTag: {
     fontSize: 11,
@@ -4276,6 +4277,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.lg,
     fontWeight: '800',
     lineHeight: 22,
+    flexShrink: 1,
   },
   editGoalBtn: {
     paddingVertical: 5,
