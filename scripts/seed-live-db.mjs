@@ -190,6 +190,32 @@ INSERT INTO public.posts (
   0,
   0
 );
+
+-- 10. Seed Stories (valid for 24 hours)
+INSERT INTO public.stories (
+  user_id, media_url, caption, created_at, expires_at
+) VALUES
+(
+  'd0c70410-0000-0000-0000-000000000001',
+  'linear-gradient:from=#14B8A6&to=#0D9488',
+  'Morning rounds completed! Remember to drink at least 3 liters of water today. 💧',
+  now(),
+  now() + interval '24 hours'
+),
+(
+  'ca7e0410-0000-0000-0000-000000000002',
+  'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?w=500&auto=format&fit=crop&q=80',
+  'Healthy breakfast prepared for our patient. Nutritious food is the best medicine! 🍎',
+  now(),
+  now() + interval '24 hours'
+),
+(
+  'a71e0410-0000-0000-0000-000000000003',
+  'linear-gradient:from=#F59E0B&to=#D97706',
+  'Completed my 10k steps goal for today! Feel amazing and energetic! 🏃‍♂️💪',
+  now(),
+  now() + interval '24 hours'
+);
 `;
 
 const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } });

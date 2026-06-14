@@ -97,3 +97,29 @@ export function isValidPassword(password: string): { valid: boolean; message: st
   if (!/[0-9]/.test(password)) return { valid: false, message: 'Include at least one number' };
   return { valid: true, message: 'Strong password' };
 }
+
+/**
+ * Format active/online status to relative last seen string
+ */
+export function formatActiveTime(isOnline: boolean, lastSeenAt?: string | null): string {
+  // If explicitly online (Zustand active state)
+  if (isOnline) return 'Active now';
+  if (!lastSeenAt) return 'Offline';
+
+  const now = new Date();
+  const date = new Date(lastSeenAt);
+  const diffMs = now.getTime() - date.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  // If last active was within 5 minutes, still consider them active now
+  if (diffMinutes < 5) return 'Active now';
+  if (diffMinutes < 60) return `Active ${diffMinutes}m ago`;
+  if (diffHours < 24) return `Active ${diffHours}h ago`;
+  if (diffDays < 7) return `Active ${diffDays}d ago`;
+
+  return `Active ${date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
+}
+

@@ -19,7 +19,7 @@ import { useThemeColors } from '@/src/hooks/useTheme';
 import { useAuthStore } from '@/src/store/authStore';
 import { ChatService } from '@/src/services/chatService';
 import { Conversation, Message } from '@/src/types';
-import { formatTime } from '@/src/utils/helpers';
+import { formatTime, formatActiveTime } from '@/src/utils/helpers';
 import { FontSize, Spacing, Radius } from '@/src/utils/constants';
 
 export default function ChatScreen() {
@@ -109,6 +109,10 @@ export default function ChatScreen() {
 
   if (!otherUser) return null;
 
+  // Compute active status
+  const otherUserOnline = otherUser.is_online;
+  const isOnlineResolved = otherUserOnline || (otherUser.last_seen_at && (Date.now() - new Date(otherUser.last_seen_at).getTime() < 5 * 60 * 1000));
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Chat Header */}
@@ -117,14 +121,14 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.headerUser} onPress={() => router.push(`/user/${otherUser.id}` as any)}>
-          <Avatar uri={otherUser.avatar_url} name={otherUser.full_name} size={40} showOnline isOnline={otherUser.is_online} />
+          <Avatar uri={otherUser.avatar_url} name={otherUser.full_name} size={40} showOnline isOnline={otherUser.is_online} lastSeenAt={otherUser.last_seen_at} />
           <View style={styles.headerUserInfo}>
             <View style={styles.headerNameRow}>
               <Text style={[styles.headerName, { color: colors.text }]}>{otherUser.full_name}</Text>
               <RoleBadge role={otherUser.role} size="sm" showLabel={false} />
             </View>
-            <Text style={[styles.headerStatus, { color: otherUser.is_online ? colors.success : colors.textTertiary }]}>
-              {otherUser.is_online ? 'Online' : 'Offline'}
+            <Text style={[styles.headerStatus, { color: isOnlineResolved ? colors.success : colors.textTertiary }]}>
+              {formatActiveTime(otherUser.is_online, otherUser.last_seen_at)}
             </Text>
           </View>
         </TouchableOpacity>

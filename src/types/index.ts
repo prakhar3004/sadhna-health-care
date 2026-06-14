@@ -27,7 +27,20 @@ export interface Profile {
   associated_patient_username?: string | null;
   patient_id_card_number?: string | null;
   chronic_condition?: string | null;
+  last_seen_at?: string;
 }
+
+// ─── Story ────────────────────────────────────────────────────
+export interface Story {
+  id: string;
+  user_id: string;
+  user?: Profile;
+  media_url: string | null;
+  caption: string | null;
+  created_at: string;
+  expires_at: string;
+}
+
 
 // ─── Post ─────────────────────────────────────────────────────
 export interface Post {

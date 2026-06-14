@@ -133,6 +133,7 @@ export default function MessagesScreen() {
           size={52}
           showOnline
           isOnline={otherUser.is_online}
+          lastSeenAt={otherUser.last_seen_at}
         />
         <View style={styles.conversationInfo}>
           <View style={styles.conversationHeader}>
@@ -190,10 +191,21 @@ export default function MessagesScreen() {
         <Text style={[styles.onlineTitle, { color: colors.textTertiary }]}>{trans.online_now}</Text>
         <FlatList
           horizontal
-          data={conversations.map((c) => c.participants.find((p) => p.id !== user?.id) || c.participants[0]).filter((p) => p && p.is_online)}
+          data={conversations
+            .map((c) => c.participants.find((p) => p.id !== user?.id) || c.participants[0])
+            .filter((p) => {
+              if (!p) return false;
+              return p.is_online || (p.last_seen_at && (Date.now() - new Date(p.last_seen_at).getTime() < 5 * 60 * 1000));
+            })}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.onlineItem}>
-              <Avatar uri={item.avatar_url} name={item.full_name} size={44} showOnline isOnline />
+            <TouchableOpacity 
+              style={styles.onlineItem}
+              onPress={() => {
+                const conv = conversations.find(c => c.participants.some(p => p.id === item.id));
+                if (conv) router.push(`/chat/${conv.id}` as any);
+              }}
+            >
+              <Avatar uri={item.avatar_url} name={item.full_name} size={44} showOnline isOnline={item.is_online} lastSeenAt={item.last_seen_at} />
               <Text style={[styles.onlineName, { color: colors.textSecondary }]} numberOfLines={1}>
                 {item.full_name.split(' ')[0]}
               </Text>

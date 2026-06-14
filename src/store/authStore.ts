@@ -51,6 +51,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName: string, role: UserRole) => Promise<void>;
   logout: () => void;
+  updateActivityStatus: (isOnline?: boolean) => Promise<void>;
   setLoading: (loading: boolean) => void;
   initialize: () => () => void;
   completeProfile: (profileData: Partial<Profile>) => Promise<void>;
@@ -123,7 +124,7 @@ const MOCK_USERS: Record<string, Profile> = {
   },
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true, // Start in loading state for checking initial session on mount
@@ -394,6 +395,21 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: async () => {
     set({ isLoading: true });
+    const user = get().user;
+    if (user && !isDemoMode()) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({
+            is_online: false,
+            last_seen_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+      } catch (err) {
+        console.warn('Failed to set offline status on logout:', err);
+      }
+    }
     try {
       await supabase.auth.signOut();
     } catch (err) {
@@ -402,6 +418,26 @@ export const useAuthStore = create<AuthState>((set) => ({
     setActiveUserForDemo(null, null);
     saveLocalSession(null);
     set({ user: null, isAuthenticated: false, isLoading: false });
+  },
+
+  updateActivityStatus: async (isOnline?: boolean) => {
+    const user = get().user;
+    if (!user || isDemoMode()) return;
+    try {
+      const updateData: any = {
+        last_seen_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      if (isOnline !== undefined) {
+        updateData.is_online = isOnline;
+      }
+      await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', user.id);
+    } catch (err) {
+      console.warn('Error updating activity status:', err);
+    }
   },
 
   setLoading: (isLoading) => set({ isLoading }),

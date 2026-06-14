@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   phone TEXT,
   is_verified BOOLEAN DEFAULT FALSE,
   is_online BOOLEAN DEFAULT FALSE,
+  last_seen_at TIMESTAMPTZ DEFAULT NOW(),
   followers_count INTEGER DEFAULT 0,
   following_count INTEGER DEFAULT 0,
   posts_count INTEGER DEFAULT 0,
@@ -94,7 +95,7 @@ BEGIN
 
   INSERT INTO public.profiles (
     id, role, full_name, username, avatar_url,
-    is_verified, is_online, is_profile_complete, created_at, updated_at
+    is_verified, is_online, is_profile_complete, created_at, updated_at, last_seen_at
   ) VALUES (
     new.id,
     raw_role,
@@ -105,6 +106,7 @@ BEGIN
     FALSE,  -- presence is set by the client on connect, not at signup
     FALSE,  -- user still needs to complete the profile-setup flow
     COALESCE(new.created_at, NOW()),
+    NOW(),
     NOW()
   );
   RETURN NEW;
@@ -751,3 +753,37 @@ BEGIN
   ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+-- ════════════════════════════════════════════════════════════════
+-- 12. STORIES TABLE & SECURITY POLICIES
+-- ════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS public.stories (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  media_url TEXT,
+  caption TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '24 hours')
+);
+
+ALTER TABLE public.stories ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read access to stories" ON public.stories;
+CREATE POLICY "Allow public read access to stories"
+ON public.stories FOR SELECT
+TO public
+USING (expires_at > NOW());
+
+DROP POLICY IF EXISTS "Allow users to insert their own stories" ON public.stories;
+CREATE POLICY "Allow users to insert their own stories"
+ON public.stories FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Allow users to delete their own stories" ON public.stories;
+CREATE POLICY "Allow users to delete their own stories"
+ON public.stories FOR DELETE
+TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_stories_user_expires ON public.stories (user_id, expires_at);

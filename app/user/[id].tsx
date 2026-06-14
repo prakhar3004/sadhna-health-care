@@ -22,7 +22,7 @@ import { PostsService } from '@/src/services/postsService';
 import { ChatService } from '@/src/services/chatService';
 import { Profile, Post } from '@/src/types';
 import { RoleConfig, FontSize, Spacing, Radius } from '@/src/utils/constants';
-import { formatCount } from '@/src/utils/helpers';
+import { formatCount, formatActiveTime } from '@/src/utils/helpers';
 
 export default function UserProfileScreen() {
   const colors = useThemeColors();
@@ -108,6 +108,7 @@ export default function UserProfileScreen() {
               size={90}
               showOnline
               isOnline={profile.is_online}
+              lastSeenAt={profile.last_seen_at}
             />
           </View>
           <Text style={[styles.fullName, { color: colors.text }]}>{profile.full_name}</Text>
@@ -115,6 +116,9 @@ export default function UserProfileScreen() {
           <View style={styles.badgeRow}>
             <RoleBadge role={profile.role} size="md" verified={profile.is_verified} />
           </View>
+          <Text style={[styles.activeStatusText, { color: (profile.is_online || (profile.last_seen_at && (Date.now() - new Date(profile.last_seen_at).getTime() < 5 * 60 * 1000))) ? colors.success : colors.textTertiary }]}>
+            {formatActiveTime(profile.is_online, profile.last_seen_at)}
+          </Text>
 
           {profile.bio && (
             <Text style={[styles.bio, { color: colors.textSecondary }]}>{profile.bio}</Text>
@@ -259,6 +263,11 @@ const styles = StyleSheet.create({
   },
   badgeRow: {
     marginTop: Spacing.sm,
+  },
+  activeStatusText: {
+    fontSize: FontSize.xs,
+    marginTop: 6,
+    fontWeight: '600',
   },
   bio: {
     fontSize: FontSize.sm,

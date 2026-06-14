@@ -6,7 +6,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Platform } from 'react-native';
+import { Platform, AppState, AppStateStatus } from 'react-native';
 import { useColorScheme } from '@/src/hooks/useTheme';
 import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
@@ -46,6 +46,42 @@ export default function RootLayout() {
     const unsubscribe = useAuthStore.getState().initialize();
     return () => {
       if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  // Active status heartbeat & AppState tracking (like FB/Instagram)
+  useEffect(() => {
+    const store = useAuthStore.getState();
+    
+    // Heartbeat to update last_seen_at when app is open
+    const interval = setInterval(() => {
+      const state = useAuthStore.getState();
+      if (state.isAuthenticated && state.user) {
+        state.updateActivityStatus(true);
+      }
+    }, 60000); // every 1 minute
+
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      const state = useAuthStore.getState();
+      if (!state.isAuthenticated || !state.user) return;
+
+      if (nextAppState === 'active') {
+        state.updateActivityStatus(true);
+      } else if (nextAppState === 'background' || nextAppState === 'inactive') {
+        state.updateActivityStatus(false);
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    // Initial update on mount if authenticated
+    if (store.isAuthenticated && store.user) {
+      store.updateActivityStatus(true);
+    }
+
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
     };
   }, []);
 

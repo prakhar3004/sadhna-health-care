@@ -12,14 +12,24 @@ interface AvatarProps {
   size?: number;
   showOnline?: boolean;
   isOnline?: boolean;
+  lastSeenAt?: string | null;
   style?: ViewStyle;
 }
 
-export function Avatar({ uri, name, size = 44, showOnline = false, isOnline = false, style }: AvatarProps) {
+export function Avatar({ uri, name, size = 44, showOnline = false, isOnline = false, lastSeenAt, style }: AvatarProps) {
   const colors = useThemeColors();
   const initials = getInitials(name);
   const fontSize = size * 0.36;
   const onlineDotSize = size * 0.28;
+
+  // Resolve online status dynamically
+  let active = isOnline;
+  if (lastSeenAt) {
+    const diffMs = Date.now() - new Date(lastSeenAt).getTime();
+    if (diffMs < 5 * 60 * 1000) { // 5 minutes
+      active = true;
+    }
+  }
 
   return (
     <View style={[{ width: size, height: size }, style]}>
@@ -61,7 +71,7 @@ export function Avatar({ uri, name, size = 44, showOnline = false, isOnline = fa
               width: onlineDotSize,
               height: onlineDotSize,
               borderRadius: onlineDotSize / 2,
-              backgroundColor: isOnline ? '#22C55E' : '#94A3B8',
+              backgroundColor: active ? '#22C55E' : '#94A3B8',
               borderColor: colors.surface,
               borderWidth: 2,
             },

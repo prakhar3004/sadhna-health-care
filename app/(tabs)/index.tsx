@@ -20,6 +20,8 @@ import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
 import { PostsService } from '@/src/services/postsService';
 import { PeopleService } from '@/src/services/peopleService';
+import { StoriesService, UserStories } from '@/src/services/storiesService';
+import { StoryViewer } from '@/src/components/feed/StoryViewer';
 import { Post, Profile } from '@/src/types';
 import { APP_NAME, FontSize, Spacing, Radius } from '@/src/utils/constants';
 
@@ -40,16 +42,24 @@ export default function HomeFeedScreen() {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [people, setPeople] = useState<Profile[]>([]);
+  
+  // Stories & Creation States
+  const [userStories, setUserStories] = useState<UserStories[]>([]);
+  const [isStoryViewerVisible, setIsStoryViewerVisible] = useState(false);
+  const [selectedStoryUserIdx, setSelectedStoryUserIdx] = useState(0);
+  const [showCreateOptions, setShowCreateOptions] = useState(false);
 
   const loadFeed = useCallback(async () => {
     if (!user) return;
     try {
-      const [feed, suggested] = await Promise.all([
+      const [feed, suggested, activeStories] = await Promise.all([
         PostsService.fetchFeed(user.id),
         PeopleService.search('', 'all', user.id),
+        StoriesService.fetchStoriesGroupedByUser(),
       ]);
       setPosts(feed);
       setPeople(suggested);
+      setUserStories(activeStories);
     } catch (e) {
       console.warn('Failed to load feed:', e);
     }
@@ -99,20 +109,75 @@ export default function HomeFeedScreen() {
     { key: 'milestone' as const, label: t('filter_milestones') },
   ];
 
-  const renderStoryItem = ({ item }: { item: Profile }) => (
-    <TouchableOpacity
-      style={styles.storyItem}
-      onPress={() => router.push(`/user/${item.id}` as any)}
-      activeOpacity={0.7}
-    >
-      <View style={[styles.storyRing, { borderColor: item.is_online ? colors.primary : colors.border }]}>
-        <Avatar uri={item.avatar_url} name={item.full_name} size={56} />
-      </View>
-      <Text style={[styles.storyName, { color: colors.textSecondary }]} numberOfLines={1}>
-        {item.full_name.split(' ')[0]}
-      </Text>
-    </TouchableOpacity>
-  );
+  const storyStripData = React.useMemo(() => {
+    const storyUserIds = new Set(userStories.map((us) => us.user.id));
+    const items: (
+      | { type: 'story'; id: string; user: Profile; stories: any[] }
+      | { type: 'profile'; id: string; user: Profile }
+    )[] = userStories.map((us) => ({
+      type: 'story',
+      id: us.user.id,
+      user: us.user,
+      stories: us.stories,
+    }));
+
+    // Add other people who do not have active stories
+    people.forEach((p) => {
+      if (!storyUserIds.has(p.id)) {
+        items.push({
+          type: 'profile',
+          id: p.id,
+          user: p,
+        });
+      }
+    });
+
+    return items;
+  }, [userStories, people]);
+
+  const renderStoryItem = ({ item }: { item: any }) => {
+    const hasStories = item.type === 'story';
+    const profile = item.user;
+    const userStoriesIdx = userStories.findIndex((us) => us.user.id === profile.id);
+
+    return (
+      <TouchableOpacity
+        style={styles.storyItem}
+        onPress={() => {
+          if (hasStories && userStoriesIdx !== -1) {
+            setSelectedStoryUserIdx(userStoriesIdx);
+            setIsStoryViewerVisible(true);
+          } else {
+            router.push(`/user/${profile.id}` as any);
+          }
+        }}
+        activeOpacity={0.7}
+      >
+        <View
+          style={[
+            styles.storyRing,
+            {
+              borderColor: hasStories ? colors.primary : 'transparent',
+              borderWidth: hasStories ? 2 : 0,
+              padding: hasStories ? 2 : 0,
+            },
+          ]}
+        >
+          <Avatar
+            uri={profile.avatar_url}
+            name={profile.full_name}
+            size={hasStories ? 56 : 60} // Keep sizing aligned
+            showOnline={!hasStories}
+            isOnline={profile.is_online}
+            lastSeenAt={profile.last_seen_at}
+          />
+        </View>
+        <Text style={[styles.storyName, { color: colors.textSecondary }]} numberOfLines={1}>
+          {profile.full_name.split(' ')[0]}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   const renderDashboard = () => {
     if (!user) return null;
@@ -133,13 +198,13 @@ export default function HomeFeedScreen() {
       <View style={[styles.storiesSection, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
         <FlatList
           horizontal
-          data={people}
+          data={storyStripData}
           renderItem={renderStoryItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => `${item.type}_${item.id}`}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.storiesList}
           ListHeaderComponent={
-            <TouchableOpacity style={styles.storyItem} onPress={() => router.push('/post/create' as any)}>
+            <TouchableOpacity style={styles.storyItem} onPress={() => setShowCreateOptions(true)}>
               <View style={[styles.addStoryContainer, { backgroundColor: colors.primaryFaded, borderColor: colors.primary }]}>
                 <Ionicons name="add" size={28} color={colors.primary} />
               </View>
@@ -267,11 +332,71 @@ export default function HomeFeedScreen() {
       {/* Floating Action Button */}
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.primary }]}
-        onPress={() => router.push('/post/create' as any)}
+        onPress={() => setShowCreateOptions(true)}
         activeOpacity={0.8}
       >
         <Ionicons name="create-outline" size={26} color="#FFF" />
       </TouchableOpacity>
+
+      {/* Story Slideshow Viewer */}
+      <StoryViewer
+        userStoriesList={userStories}
+        initialUserIndex={selectedStoryUserIdx}
+        visible={isStoryViewerVisible}
+        onClose={() => setIsStoryViewerVisible(false)}
+      />
+
+      {/* Create Options Modal Sheet */}
+      {showCreateOptions && (
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowCreateOptions(false)}
+          />
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <View style={[styles.modalIndicator, { backgroundColor: colors.border }]} />
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Create / जोड़ें</Text>
+            
+            <View style={styles.createOptionsRow}>
+              <TouchableOpacity
+                style={[styles.createOptionBtn, { borderColor: colors.borderLight, backgroundColor: colors.surfaceSecondary }]}
+                onPress={() => {
+                  setShowCreateOptions(false);
+                  router.push('/post/create' as any);
+                }}
+              >
+                <View style={[styles.createOptionIconBg, { backgroundColor: colors.primaryFaded }]}>
+                  <Ionicons name="document-text" size={32} color={colors.primary} />
+                </View>
+                <Text style={[styles.createOptionLabel, { color: colors.text }]}>New Post</Text>
+                <Text style={[styles.createOptionSub, { color: colors.textTertiary }]}>Share health advice or ask queries</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.createOptionBtn, { borderColor: colors.borderLight, backgroundColor: colors.surfaceSecondary }]}
+                onPress={() => {
+                  setShowCreateOptions(false);
+                  router.push('/story/create' as any);
+                }}
+              >
+                <View style={[styles.createOptionIconBg, { backgroundColor: '#F59E0B20' }]}>
+                  <Ionicons name="images" size={32} color="#D97706" />
+                </View>
+                <Text style={[styles.createOptionLabel, { color: colors.text }]}>Add Story</Text>
+                <Text style={[styles.createOptionSub, { color: colors.textTertiary }]}>Share photo or text for 24 hours</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.closeBtn, { backgroundColor: colors.surfaceSecondary }]}
+              onPress={() => setShowCreateOptions(false)}
+            >
+              <Text style={[styles.closeBtnText, { color: colors.text }]}>Cancel / रद्द करें</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Language Selection Modal Sheet */}
       {showLanguageModal && (
@@ -556,5 +681,34 @@ const styles = StyleSheet.create({
   closeBtnText: {
     fontSize: FontSize.sm,
     fontWeight: '700',
+  },
+  createOptionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing.md,
+    marginVertical: Spacing.md,
+  },
+  createOptionBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    alignItems: 'center',
+    gap: 8,
+  },
+  createOptionIconBg: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createOptionLabel: {
+    fontSize: FontSize.base,
+    fontWeight: '700',
+  },
+  createOptionSub: {
+    fontSize: 10,
+    textAlign: 'center',
   },
 });

@@ -221,7 +221,7 @@ export default function SearchScreen() {
       onPress={() => router.push(`/user/${item.id}` as any)}
       activeOpacity={0.7}
     >
-      <Avatar uri={item.avatar_url} name={item.full_name} size={52} showOnline isOnline={item.is_online} />
+      <Avatar uri={item.avatar_url} name={item.full_name} size={52} showOnline isOnline={item.is_online} lastSeenAt={item.last_seen_at} />
       <View style={styles.profileInfo}>
         <View style={styles.profileNameRow}>
           <Text style={[styles.profileName, { color: colors.text }]} numberOfLines={1}>
