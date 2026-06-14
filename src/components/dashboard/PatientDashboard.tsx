@@ -1117,11 +1117,12 @@ export function PatientDashboard() {
   }, []);
 
   const saveGoal = async (newGoal: string, newProgress: number) => {
-    setGoalText(newGoal);
+    const sanitizedGoal = newGoal?.replace(/\\n/g, ' ').replace(/\r?\n|\r/g, ' ').replace(/\s+/g, ' ').trim();
+    setGoalText(sanitizedGoal);
     setGoalProgress(newProgress);
     setIsGoalModalVisible(false);
     try {
-      await AsyncStorage.setItem('user_wajah_goal', newGoal);
+      await AsyncStorage.setItem('user_wajah_goal', sanitizedGoal);
       await AsyncStorage.setItem('user_wajah_progress', newProgress.toString());
     } catch (e) {}
   };
@@ -2004,7 +2005,7 @@ export function PatientDashboard() {
               {getUiText('wajah_title')}
             </Text>
             <Text style={[styles.goalMainText, { color: colors.text }]}>
-              "{goalText?.replace(/\r?\n|\r/g, ' ')}"
+              "{goalText?.replace(/\\n/g, ' ').replace(/\r?\n|\r/g, ' ').replace(/\s+/g, ' ').trim()}"
             </Text>
           </View>
           <TouchableOpacity
