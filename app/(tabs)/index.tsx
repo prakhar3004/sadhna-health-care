@@ -12,7 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { PostCard } from '@/src/components/feed/PostCard';
 import { Avatar } from '@/src/components/ui/Avatar';
@@ -22,6 +22,8 @@ import { useLanguageStore } from '@/src/store/languageStore';
 import { PostsService } from '@/src/services/postsService';
 import { PeopleService } from '@/src/services/peopleService';
 import { StoriesService, UserStories } from '@/src/services/storiesService';
+import { NotificationsService } from '@/src/services/notificationsService';
+import { useDashboardConfigStore } from '@/src/store/dashboardConfigStore';
 import { StoryViewer } from '@/src/components/feed/StoryViewer';
 import { Post, Profile } from '@/src/types';
 import { APP_NAME, FontSize, Spacing, Radius } from '@/src/utils/constants';
@@ -30,6 +32,7 @@ import { APP_NAME, FontSize, Spacing, Radius } from '@/src/utils/constants';
 import { PatientDashboard } from '@/src/components/dashboard/PatientDashboard';
 import { DoctorDashboard } from '@/src/components/dashboard/DoctorDashboard';
 import { CaregiverDashboard } from '@/src/components/dashboard/CaregiverDashboard';
+import { AdminDashboard } from '@/src/components/dashboard/AdminDashboard';
 
 export default function HomeFeedScreen() {
   const colors = useThemeColors();
@@ -38,11 +41,14 @@ export default function HomeFeedScreen() {
   const t = useLanguageStore((state) => state.t);
   const { language, setLanguage } = useLanguageStore();
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'feed' | 'dashboard'>('feed');
+  const [activeTab, setActiveTab] = useState<'feed' | 'dashboard'>(
+    user?.role === 'admin' ? 'dashboard' : 'feed'
+  );
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'doctor' | 'caregiver' | 'patient' | 'milestone'>('all');
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [people, setPeople] = useState<Profile[]>([]);
+  const [unreadNotif, setUnreadNotif] = useState(0);
   
   // Stories & Creation States
   const [userStories, setUserStories] = useState<UserStories[]>([]);
@@ -50,25 +56,34 @@ export default function HomeFeedScreen() {
   const [selectedStoryUserIdx, setSelectedStoryUserIdx] = useState(0);
   const [showCreateOptions, setShowCreateOptions] = useState(false);
 
+  const loadDashboardConfig = useDashboardConfigStore((s) => s.load);
+
   const loadFeed = useCallback(async () => {
     if (!user) return;
+    loadDashboardConfig();
     try {
-      const [feed, suggested, activeStories] = await Promise.all([
+      const [feed, suggested, activeStories, unread] = await Promise.all([
         PostsService.fetchFeed(user.id),
         PeopleService.search('', 'all', user.id),
         StoriesService.fetchStoriesGroupedByUser(),
+        NotificationsService.unreadCount(user.id).catch(() => 0),
       ]);
       setPosts(feed);
       setPeople(suggested);
       setUserStories(activeStories);
+      setUnreadNotif(unread);
     } catch (e) {
       console.warn('Failed to load feed:', e);
     }
   }, [user?.id]);
 
-  useEffect(() => {
-    loadFeed();
-  }, [loadFeed]);
+  // Reload whenever the feed regains focus so newly created posts/stories show
+  // up immediately (e.g. after returning from the create-post screen).
+  useFocusEffect(
+    useCallback(() => {
+      loadFeed();
+    }, [loadFeed])
+  );
 
   const languageOptions: { key: any; label: string }[] = [
     { key: 'en', label: 'English' },
@@ -94,7 +109,7 @@ export default function HomeFeedScreen() {
   const filteredPosts = React.useMemo(() => {
     if (selectedFilter === 'all') return posts;
     if (selectedFilter === 'doctor' || selectedFilter === 'caregiver' || selectedFilter === 'patient') {
-      return posts.filter((p) => p.author.role === selectedFilter);
+      return posts.filter((p) => p.author?.role === selectedFilter);
     }
     if (selectedFilter === 'milestone') {
       return posts.filter((p) => p.post_type === 'milestone' || p.post_type === 'recovery_story');
@@ -183,6 +198,8 @@ export default function HomeFeedScreen() {
   const renderDashboard = () => {
     if (!user) return null;
     switch (user.role) {
+      case 'admin':
+        return <AdminDashboard />;
       case 'doctor':
         return <DoctorDashboard />;
       case 'caregiver':
@@ -270,9 +287,17 @@ export default function HomeFeedScreen() {
           >
             <Ionicons name="language" size={22} color={colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.headerButton, { backgroundColor: colors.surfaceSecondary }]}>
+          <TouchableOpacity
+            style={[styles.headerButton, { backgroundColor: colors.surfaceSecondary }]}
+            onPress={() => router.push('/notifications' as any)}
+            activeOpacity={0.7}
+          >
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
-            <View style={[styles.notifDot, { backgroundColor: '#EF4444' }]} />
+            {unreadNotif > 0 && (
+              <View style={[styles.notifBadge, { backgroundColor: '#EF4444' }]}>
+                <Text style={styles.notifBadgeText}>{unreadNotif > 9 ? '9+' : unreadNotif}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -321,6 +346,21 @@ export default function HomeFeedScreen() {
           )}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={ListHeader}
+          ListEmptyComponent={
+            <View style={styles.feedEmpty}>
+              <Ionicons name="newspaper-outline" size={48} color={colors.textTertiary} />
+              <Text style={[styles.feedEmptyTitle, { color: colors.text }]}>{t('feed_empty_title')}</Text>
+              <Text style={[styles.feedEmptySub, { color: colors.textTertiary }]}>{t('feed_empty_sub')}</Text>
+              <TouchableOpacity
+                style={[styles.feedEmptyBtn, { backgroundColor: colors.primary }]}
+                onPress={() => router.push('/post/create' as any)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="create-outline" size={18} color="#FFF" />
+                <Text style={styles.feedEmptyBtnText}>{t('new_post')}</Text>
+              </TouchableOpacity>
+            </View>
+          }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.feedList}
           refreshControl={
@@ -499,6 +539,22 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
+  notifBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
   toggleContainer: {
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.sm,
@@ -586,6 +642,37 @@ const styles = StyleSheet.create({
   },
   feedList: {
     paddingBottom: 100,
+    flexGrow: 1,
+  },
+  feedEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
+    paddingHorizontal: Spacing.xl,
+    gap: 10,
+  },
+  feedEmptyTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+  },
+  feedEmptySub: {
+    fontSize: FontSize.sm,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+  feedEmptyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: Radius.md,
+    marginTop: Spacing.md,
+  },
+  feedEmptyBtnText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: FontSize.sm,
   },
   fab: {
     position: 'absolute',

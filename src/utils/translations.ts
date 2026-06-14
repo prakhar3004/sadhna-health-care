@@ -84,6 +84,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     filter_patients: '🟢 Patients',
     filter_milestones: '🎯 Milestones',
     new_post: 'New Post',
+    feed_empty_title: 'Your feed is empty',
+    feed_empty_sub: 'Follow people or share your first post to get started.',
 
     // Patient Dashboard
     hello: 'Hello',
@@ -183,6 +185,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     filter_patients: '🟢 मरीज',
     filter_milestones: '🎯 उपलब्धियां',
     new_post: 'नया पोस्ट',
+    feed_empty_title: 'आपकी फ़ीड खाली है',
+    feed_empty_sub: 'शुरू करने के लिए लोगों को फ़ॉलो करें या अपनी पहली पोस्ट साझा करें।',
 
     // Patient Dashboard
     hello: 'नमस्ते',
@@ -282,6 +286,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     filter_patients: '🟢 Patients',
     filter_milestones: '🎯 Milestones',
     new_post: 'Naya Post',
+    feed_empty_title: 'Aapki feed khali hai',
+    feed_empty_sub: 'Shuru karne ke liye logon ko follow karein ya apni pehli post share karein.',
 
     // Patient Dashboard
     hello: 'Namaste',

@@ -24,6 +24,8 @@ import { ApiService, EmergencyRequestRecord, VitalsLogRecord } from '@/src/servi
 import { Appointment, Profile } from '@/src/types';
 import { Radius, FontSize, Spacing } from '@/src/utils/constants';
 import { formatTime } from '@/src/utils/helpers';
+import { useDashboardConfigStore } from '@/src/store/dashboardConfigStore';
+import { resolveVisibility } from '@/src/services/dashboardConfigService';
 
 interface VitalsAlert {
   patient: Profile;
@@ -39,6 +41,8 @@ export function DoctorDashboard() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { language, t } = useLanguageStore();
+  const dashRules = useDashboardConfigStore((s) => s.rules);
+  const vis = (key: string) => resolveVisibility(dashRules, user?.id, user?.role, key);
 
   // Dashboard state
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -346,6 +350,7 @@ export function DoctorDashboard() {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
       {/* Clinician Welcome & Availability Selector */}
+      {vis('welcome_availability') && (
       <Card style={[styles.welcomeCard, { backgroundColor: colors.surface }]}>
         <View style={styles.welcomeRow}>
           <View style={styles.welcomeInfo}>
@@ -449,8 +454,10 @@ export function DoctorDashboard() {
           })}
         </View>
       </Card>
+      )}
 
       {/* Analytics & Progress Grid */}
+      {vis('analytics_grid') && (
       <View style={styles.metricsWrapper}>
         <Card style={styles.progressWidget}>
           <Text style={[styles.widgetTitle, { color: colors.text }]}>{dict.consult_goal}</Text>
@@ -498,6 +505,7 @@ export function DoctorDashboard() {
           </Card>
         </View>
       </View>
+      )}
 
       {loading ? (
         <View style={styles.centerLoader}>
@@ -505,6 +513,7 @@ export function DoctorDashboard() {
         </View>
       ) : (
         <>
+          {vis('vitals_alerts') && (<>
           {/* Critical Care Vitals Alert Panel */}
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{dict.vitals_alerts}</Text>
@@ -581,7 +590,9 @@ export function DoctorDashboard() {
               </Card>
             ))
           )}
+          </>)}
 
+          {vis('appointments_queue') && (<>
           {/* Interactive Clinical Appointments Queue */}
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: Spacing.lg }]}>
             {dict.appt_queue}
@@ -732,7 +743,9 @@ export function DoctorDashboard() {
               ))
             )}
           </Card>
+          </>)}
 
+          {vis('seva_verification') && (<>
           {/* Seva Co-Funding Emergency Verification Panel */}
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: Spacing.lg }]}>
             {dict.seva_verification}
@@ -782,7 +795,9 @@ export function DoctorDashboard() {
               </Card>
             ))
           )}
+          </>)}
 
+          {vis('clinical_shortcuts') && (<>
           {/* Clinical Shortcuts & Health Action Center */}
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: Spacing.lg }]}>
             {dict.clinical_shortcuts}
@@ -808,6 +823,7 @@ export function DoctorDashboard() {
               <Text style={[styles.shortcutLabel, { color: colors.text }]}>{dict.awareness_post}</Text>
             </TouchableOpacity>
           </View>
+          </>)}
         </>
       )}
 

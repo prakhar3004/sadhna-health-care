@@ -2,7 +2,7 @@
 import { supabase } from '@/src/lib/supabase';
 import { isDemoMode } from '@/src/lib/config';
 import { Appointment, Profile } from '@/src/types';
-import { mockAppointments } from '@/src/data/mockData';
+import { mockAppointments, mockProfiles } from '@/src/data/mockData';
 
 let demoAppointments: Appointment[] | null = null;
 const getDemoAppointments = (): Appointment[] => {
@@ -58,17 +58,25 @@ export const AppointmentsService = {
 
   async createAppointment(input: CreateAppointmentInput): Promise<Appointment> {
     if (isDemoMode()) {
-      // Demo: minimal stub; profiles resolved by the caller for display if needed.
-      const stub = {
+      // Demo: resolve the related profiles so the UI can render the card safely
+      // (the appointments screen reads appt.doctor / appt.patient directly).
+      const findProfile = (id: string | null | undefined) =>
+        (id ? mockProfiles.find((p) => p.id === id) : undefined) ?? null;
+      const stub: Appointment = {
         id: `a_${Date.now()}`,
-        ...input,
+        doctor_id: input.doctor_id,
+        doctor: findProfile(input.doctor_id) as Profile,
+        patient_id: input.patient_id,
+        patient: findProfile(input.patient_id) as Profile,
         caregiver_id: input.caregiver_id ?? null,
+        caregiver: findProfile(input.caregiver_id),
+        scheduled_at: input.scheduled_at,
         duration_minutes: input.duration_minutes ?? 30,
         status: 'pending',
         type: input.type ?? 'in_person',
         notes: input.notes ?? null,
         created_at: new Date().toISOString(),
-      } as unknown as Appointment;
+      };
       getDemoAppointments().push(stub);
       return stub;
     }

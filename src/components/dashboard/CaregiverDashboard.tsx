@@ -11,12 +11,16 @@ import { Avatar } from '@/src/components/ui/Avatar';
 import { AppointmentsService } from '@/src/services/appointmentsService';
 import { Appointment } from '@/src/types';
 import { RoleConfig, Radius, FontSize, Spacing } from '@/src/utils/constants';
+import { useDashboardConfigStore } from '@/src/store/dashboardConfigStore';
+import { resolveVisibility } from '@/src/services/dashboardConfigService';
 
 export function CaregiverDashboard() {
   const colors = useThemeColors();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { language, t } = useLanguageStore();
+  const dashRules = useDashboardConfigStore((s) => s.rules);
+  const vis = (key: string) => resolveVisibility(dashRules, user?.id, user?.role, key);
 
   const [checklist, setChecklist] = useState([
     { id: 1, done: true },
@@ -232,6 +236,7 @@ export function CaregiverDashboard() {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
       {/* Welcome Banner */}
+      {vis('welcome_banner') && (
       <View style={[styles.welcomeCard, { backgroundColor: colors.primaryFaded }]}>
         <View style={styles.welcomeRow}>
           <View style={styles.welcomeText}>
@@ -243,8 +248,11 @@ export function CaregiverDashboard() {
           <Avatar uri={user.avatar_url} name={user.full_name} size={50} />
         </View>
       </View>
+      )}
 
       {/* Analytics */}
+      {vis('analytics') && (
+      <>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>{labels.care_summary}</Text>
       <View style={styles.grid}>
         <Card style={styles.gridCard}>
@@ -260,8 +268,12 @@ export function CaregiverDashboard() {
           <Text style={[styles.gridLabel, { color: colors.textTertiary }]}>{labels.tasks_completed}</Text>
         </Card>
       </View>
+      </>
+      )}
 
       {/* Care Checklist */}
+      {vis('care_checklist') && (
+      <>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>{labels.schedule}</Text>
       <Card style={styles.apptCard}>
         {checklist.map((item) => (
@@ -290,8 +302,12 @@ export function CaregiverDashboard() {
           </TouchableOpacity>
         ))}
       </Card>
+      </>
+      )}
 
       {/* Shortcuts */}
+      {vis('shortcuts') && (
+      <>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>{labels.quick_actions}</Text>
       <View style={styles.shortcuts}>
         <TouchableOpacity
@@ -304,6 +320,8 @@ export function CaregiverDashboard() {
           <Text style={[styles.shortcutLabel, { color: colors.text }]}>{labels.share_insight}</Text>
         </TouchableOpacity>
       </View>
+      </>
+      )}
     </ScrollView>
   );
 }

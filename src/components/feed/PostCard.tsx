@@ -51,6 +51,19 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
 
   const postTypeConfig = PostTypeConfig[post.post_type];
 
+  // Defensive fallback: in live mode a post's author join can occasionally be
+  // missing (e.g. a deleted profile). Never let that crash the whole feed.
+  const author = post.author ?? ({
+    id: post.author_id,
+    full_name: 'Unknown User',
+    username: 'unknown',
+    role: 'patient',
+    avatar_url: null,
+    is_online: false,
+    is_verified: false,
+    specialization: null,
+  } as unknown as Post['author']);
+
   const handleReactionSelect = (type: ReactionType) => {
     setReactions((prev) => {
       const updated = { ...prev };
@@ -96,7 +109,7 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
     }
     try {
       await Share.share({
-        message: `${post.author.full_name}'s Post on Sadhna Health Care:\n\n${post.content}`,
+        message: `${author.full_name}'s Post on Sadhna Health Care:\n\n${post.content}`,
       });
     } catch (error) {
       console.warn('Share error:', error);
@@ -183,26 +196,26 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
           activeOpacity={0.7}
         >
           <Avatar
-            uri={post.author.avatar_url}
-            name={post.author.full_name}
+            uri={author.avatar_url}
+            name={author.full_name}
             size={46}
             showOnline
-            isOnline={post.author.is_online}
+            isOnline={author.is_online}
           />
           <View style={styles.authorText}>
             <View style={styles.nameRow}>
               <Text style={[styles.authorName, { color: colors.text }]} numberOfLines={1}>
-                {post.author.full_name}
+                {author.full_name}
               </Text>
-              {post.author.is_verified && (
+              {author.is_verified && (
                 <Ionicons name="checkmark-circle" size={16} color="#3B82F6" style={{ marginLeft: 4 }} />
               )}
             </View>
             <View style={styles.metaRow}>
-              <RoleBadge role={post.author.role} size="sm" showLabel={false} />
+              <RoleBadge role={author.role} size="sm" showLabel={false} />
               <Text style={[styles.timestamp, { color: colors.textTertiary }]}>
-                {post.author.role === 'doctor' && post.author.specialization
-                  ? `${post.author.specialization} · `
+                {author.role === 'doctor' && author.specialization
+                  ? `${author.specialization} · `
                   : ''}
                 {formatRelativeTime(post.created_at)}
               </Text>
@@ -280,14 +293,14 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
         >
           <View style={styles.nestedHeader}>
             <Avatar
-              uri={post.reposted_post.author.avatar_url}
-              name={post.reposted_post.author.full_name}
+              uri={post.reposted_post.author?.avatar_url ?? null}
+              name={post.reposted_post.author?.full_name || 'User'}
               size={24}
             />
             <Text style={[styles.nestedAuthorName, { color: colors.text }]} numberOfLines={1}>
-              {post.reposted_post.author.full_name}
+              {post.reposted_post.author?.full_name || 'Unknown User'}
             </Text>
-            {post.reposted_post.author.is_verified && (
+            {post.reposted_post.author?.is_verified && (
               <Ionicons name="checkmark-circle" size={12} color="#3B82F6" />
             )}
             <Text style={[styles.nestedTimestamp, { color: colors.textTertiary }]}>
@@ -558,9 +571,9 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
             {/* Micro preview of quoted post */}
             <View style={[styles.quotePreviewCard, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
               <View style={styles.nestedHeader}>
-                <Avatar uri={post.author.avatar_url} name={post.author.full_name} size={20} />
+                <Avatar uri={author.avatar_url} name={author.full_name} size={20} />
                 <Text style={[styles.nestedAuthorName, { color: colors.text }]} numberOfLines={1}>
-                  {post.author.full_name}
+                  {author.full_name}
                 </Text>
                 <Text style={[styles.nestedTimestamp, { color: colors.textTertiary }]}>
                   · {formatRelativeTime(post.created_at)}

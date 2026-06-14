@@ -303,6 +303,9 @@ export default function AppointmentsScreen() {
     const isDoctor = user?.role === 'doctor';
     const otherPerson = isDoctor ? item.patient : item.doctor;
 
+    // Defensive: never crash a card if a related profile failed to load.
+    if (!otherPerson) return null;
+
     return (
       <Card style={styles.appointmentCard}>
         {/* Status Badge */}

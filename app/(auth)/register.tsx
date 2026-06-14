@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -50,8 +51,13 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!validate() || !selectedRole) return;
-    await register(email, password, fullName, selectedRole);
-    router.replace('/(auth)/profile-setup');
+    try {
+      await register(email, password, fullName, selectedRole);
+      // Only proceed to onboarding once a real session exists (register throws otherwise).
+      router.replace('/(auth)/profile-setup');
+    } catch (err: any) {
+      Alert.alert('Sign up failed', err?.message || 'Could not create your account. Please try again.');
+    }
   };
 
   return (
@@ -86,7 +92,7 @@ export default function RegisterScreen() {
           {/* Role Selection */}
           <Text style={[styles.sectionLabel, { color: colors.text }]}>{t('i_am_a')}</Text>
           <View style={styles.roleGrid}>
-            {(Object.keys(RoleConfig) as UserRole[]).map((role) => {
+            {(Object.keys(RoleConfig) as UserRole[]).filter((role) => role !== 'admin').map((role) => {
               const config = RoleConfig[role];
               const isSelected = selectedRole === role;
               return (

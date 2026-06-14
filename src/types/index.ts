@@ -145,7 +145,7 @@ export interface AppNotification {
   recipient_id: string;
   actor_id: string;
   actor: Profile;
-  type: 'like' | 'comment' | 'follow' | 'message' | 'appointment' | 'group_invite';
+  type: 'like' | 'comment' | 'follow' | 'message' | 'appointment' | 'group_invite' | 'announcement';
   entity_type: string;
   entity_id: string;
   title: string;

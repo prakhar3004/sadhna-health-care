@@ -222,7 +222,7 @@ export default function MessagesScreen() {
         data={conversations}
         renderItem={renderConversation}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.conversationsList}
+        contentContainerStyle={[styles.conversationsList, conversations.length === 0 && { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
@@ -230,6 +230,15 @@ export default function MessagesScreen() {
         ItemSeparatorComponent={() => (
           <View style={[styles.separator, { backgroundColor: colors.divider }]} />
         )}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Ionicons name="chatbubbles-outline" size={48} color={colors.textTertiary} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>{trans.start_conv}</Text>
+            <Text style={[styles.emptySub, { color: colors.textTertiary }]}>
+              Find people in Discover and start a conversation.
+            </Text>
+          </View>
+        }
       />
     </SafeAreaView>
   );
@@ -339,5 +348,21 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     marginLeft: 80,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+    gap: 10,
+  },
+  emptyTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+  },
+  emptySub: {
+    fontSize: FontSize.sm,
+    textAlign: 'center',
+    maxWidth: 260,
   },
 });

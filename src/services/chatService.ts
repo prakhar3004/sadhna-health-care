@@ -4,8 +4,16 @@ import { isDemoMode } from '@/src/lib/config';
 import { Conversation, Message, Profile } from '@/src/types';
 import { mockConversations, mockProfiles } from '@/src/data/mockData';
 
-// ─── Demo in-memory message store ───────────────────────────────
+// ─── Demo in-memory stores ──────────────────────────────────────
 const demoMessages: Record<string, Message[]> = {};
+
+// Seeded conversations plus any created at runtime via getOrCreate, so a fresh
+// 1:1 chat opened from a profile doesn't dead-end on a missing conversation.
+let demoConversations: Conversation[] | null = null;
+const getDemoConversations = (): Conversation[] => {
+  if (!demoConversations) demoConversations = [...mockConversations];
+  return demoConversations;
+};
 
 const seedDemoThread = (conversationId: string, currentUserId: string): Message[] => {
   const conv = mockConversations.find((c) => c.id === conversationId);
@@ -35,7 +43,7 @@ export const ChatService = {
   /** Conversations the current user participates in, newest activity first. */
   async fetchConversations(currentUserId: string): Promise<Conversation[]> {
     if (isDemoMode()) {
-      return mockConversations.filter((c) => c.participants.some((p) => p.id === currentUserId));
+      return getDemoConversations().filter((c) => c.participants.some((p) => p.id === currentUserId));
     }
 
     // Conversations the user is a member of.
@@ -94,7 +102,7 @@ export const ChatService = {
   },
 
   async fetchConversation(conversationId: string, currentUserId: string): Promise<Conversation | null> {
-    if (isDemoMode()) return mockConversations.find((c) => c.id === conversationId) || null;
+    if (isDemoMode()) return getDemoConversations().find((c) => c.id === conversationId) || null;
     const all = await this.fetchConversations(currentUserId);
     return all.find((c) => c.id === conversationId) || null;
   },
@@ -149,10 +157,24 @@ export const ChatService = {
   /** Find an existing 1:1 conversation with `otherUserId`, or create one. */
   async getOrCreateDirectConversation(currentUserId: string, otherUserId: string): Promise<string> {
     if (isDemoMode()) {
-      const existing = mockConversations.find(
+      const existing = getDemoConversations().find(
         (c) => c.type === 'direct' && c.participants.some((p) => p.id === currentUserId) && c.participants.some((p) => p.id === otherUserId)
       );
-      return existing ? existing.id : `c_demo_${otherUserId}`;
+      if (existing) return existing.id;
+      // Create a fresh demo conversation so the chat screen has participants.
+      const me = mockProfiles.find((p) => p.id === currentUserId);
+      const other = mockProfiles.find((p) => p.id === otherUserId);
+      const id = `c_demo_${otherUserId}`;
+      getDemoConversations().unshift({
+        id,
+        type: 'direct',
+        name: null,
+        participants: [me, other].filter(Boolean) as Profile[],
+        last_message: null,
+        unread_count: 0,
+        updated_at: new Date().toISOString(),
+      });
+      return id;
     }
 
     const { data: existing } = await supabase.rpc('find_direct_conversation', {

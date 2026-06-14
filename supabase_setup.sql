@@ -45,6 +45,9 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS relation_to_patient TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS associated_patient_username TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS patient_id_card_number TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS chronic_condition TEXT;
+-- last_seen_at was missing on older live databases; the signup trigger and the
+-- presence/heartbeat code both depend on it, so ensure it always exists.
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ DEFAULT NOW();
 
 -- ════════════════════════════════════════════════════════════════
 -- 2. PROFILES — ROW LEVEL SECURITY
@@ -730,6 +733,36 @@ CREATE POLICY "Recipients update notifications"
 ON public.notifications FOR UPDATE TO authenticated
 USING (recipient_id = auth.uid()) WITH CHECK (recipient_id = auth.uid());
 
+-- Follow → notification. Runs SECURITY DEFINER so the follower can create a
+-- notification row for the followed user without a client-side INSERT policy.
+CREATE OR REPLACE FUNCTION public.notify_on_follow()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  actor_name TEXT;
+BEGIN
+  IF NEW.follower_id = NEW.following_id THEN
+    RETURN NEW; -- never notify yourself
+  END IF;
+  SELECT full_name INTO actor_name FROM public.profiles WHERE id = NEW.follower_id;
+  INSERT INTO public.notifications (recipient_id, actor_id, type, entity_type, entity_id, title, body)
+  VALUES (
+    NEW.following_id,
+    NEW.follower_id,
+    'follow',
+    'profile',
+    NEW.follower_id::text,
+    COALESCE(actor_name, 'Someone') || ' started following you',
+    'Tap to view their profile'
+  );
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_follow_created ON public.follows;
+CREATE TRIGGER on_follow_created
+  AFTER INSERT ON public.follows
+  FOR EACH ROW EXECUTE FUNCTION public.notify_on_follow();
+
 -- ════════════════════════════════════════════════════════════════
 -- 11. SOCIAL LAYER — INDEXES & REALTIME
 -- ════════════════════════════════════════════════════════════════
@@ -787,3 +820,91 @@ TO authenticated
 USING (auth.uid() = user_id);
 
 CREATE INDEX IF NOT EXISTS idx_stories_user_expires ON public.stories (user_id, expires_at);
+
+-- ════════════════════════════════════════════════════════════════
+-- 13. ADMIN ROLE, RBAC & CONTROL PANEL
+-- ════════════════════════════════════════════════════════════════
+
+-- 13.1 Allow the 'admin' role + a suspension flag on profiles.
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_role_check CHECK (role IN ('doctor', 'caregiver', 'patient', 'admin'));
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- 13.2 Admin check helper. SECURITY DEFINER so RLS policies referencing it
+-- never recurse (same pattern as is_conversation_participant).
+CREATE OR REPLACE FUNCTION public.is_admin(p_uid UUID)
+RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER SET search_path = public STABLE AS $$
+  SELECT EXISTS (SELECT 1 FROM public.profiles WHERE id = p_uid AND role = 'admin');
+$$;
+GRANT EXECUTE ON FUNCTION public.is_admin(UUID) TO authenticated;
+
+-- 13.3 Admin override policies (additive — OR'd with the existing per-user ones).
+DROP POLICY IF EXISTS "Admins manage all profiles" ON public.profiles;
+CREATE POLICY "Admins manage all profiles" ON public.profiles FOR ALL TO authenticated
+  USING (public.is_admin(auth.uid())) WITH CHECK (public.is_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "Admins manage all posts" ON public.posts;
+CREATE POLICY "Admins manage all posts" ON public.posts FOR ALL TO authenticated
+  USING (public.is_admin(auth.uid())) WITH CHECK (public.is_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "Admins manage all comments" ON public.comments;
+CREATE POLICY "Admins manage all comments" ON public.comments FOR ALL TO authenticated
+  USING (public.is_admin(auth.uid())) WITH CHECK (public.is_admin(auth.uid()));
+
+-- 13.4 Dashboard widget visibility config (role defaults + per-user overrides).
+CREATE TABLE IF NOT EXISTS public.dashboard_config (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  scope TEXT NOT NULL CHECK (scope IN ('role', 'user')),
+  scope_id TEXT NOT NULL,            -- a role name, or a user uuid (as text)
+  widget_key TEXT NOT NULL,
+  is_visible BOOLEAN NOT NULL DEFAULT TRUE,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (scope, scope_id, widget_key)
+);
+ALTER TABLE public.dashboard_config ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone reads dashboard config" ON public.dashboard_config;
+CREATE POLICY "Anyone reads dashboard config" ON public.dashboard_config FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Admins write dashboard config" ON public.dashboard_config;
+CREATE POLICY "Admins write dashboard config" ON public.dashboard_config FOR ALL TO authenticated
+  USING (public.is_admin(auth.uid())) WITH CHECK (public.is_admin(auth.uid()));
+
+CREATE INDEX IF NOT EXISTS idx_dashboard_config_lookup ON public.dashboard_config (scope, scope_id);
+
+-- 13.5 Announcements + broadcast (fan-out to every user's notifications).
+CREATE TABLE IF NOT EXISTS public.announcements (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  author_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  body TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone reads announcements" ON public.announcements;
+CREATE POLICY "Anyone reads announcements" ON public.announcements FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Admins manage announcements" ON public.announcements;
+CREATE POLICY "Admins manage announcements" ON public.announcements FOR ALL TO authenticated
+  USING (public.is_admin(auth.uid())) WITH CHECK (public.is_admin(auth.uid()));
+
+CREATE OR REPLACE FUNCTION public.broadcast_announcement(p_title TEXT, p_body TEXT)
+RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  a_id UUID;
+  me UUID := auth.uid();
+BEGIN
+  IF NOT public.is_admin(me) THEN
+    RAISE EXCEPTION 'Only admins can broadcast announcements';
+  END IF;
+  INSERT INTO public.announcements (author_id, title, body)
+    VALUES (me, p_title, p_body) RETURNING id INTO a_id;
+  INSERT INTO public.notifications (recipient_id, actor_id, type, entity_type, entity_id, title, body)
+    SELECT p.id, me, 'announcement', 'announcement', a_id::text, p_title, p_body
+      FROM public.profiles p WHERE p.id <> me;
+  RETURN a_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.broadcast_announcement(TEXT, TEXT) TO authenticated;

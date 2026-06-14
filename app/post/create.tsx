@@ -30,7 +30,7 @@ export default function CreatePostScreen() {
   const allowedPostTypes = React.useMemo(() => {
     if (!user) return [];
     return (Object.entries(PostTypeConfig) as [PostType, typeof PostTypeConfig[PostType]][])
-      .filter(([_, config]) => config.allowedRoles.includes(user.role));
+      .filter(([_, config]) => config.allowedRoles.includes(user.role as any));
   }, [user]);
 
   const [postType, setPostType] = useState<PostType>(() => {
@@ -39,7 +39,7 @@ export default function CreatePostScreen() {
     }
     if (user) {
       const allowed = (Object.entries(PostTypeConfig) as [PostType, typeof PostTypeConfig[PostType]][])
-        .filter(([_, config]) => config.allowedRoles.includes(user.role));
+        .filter(([_, config]) => config.allowedRoles.includes(user.role as any));
       if (allowed.length > 0) return allowed[0][0];
     }
     return 'question';

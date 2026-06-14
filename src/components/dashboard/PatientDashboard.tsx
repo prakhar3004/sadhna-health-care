@@ -19,6 +19,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeColors } from '@/src/hooks/useTheme';
 import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
+import { useDashboardConfigStore } from '@/src/store/dashboardConfigStore';
+import { resolveVisibility } from '@/src/services/dashboardConfigService';
 import { Card } from '@/src/components/ui/Card';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { Radius, FontSize, Spacing } from '@/src/utils/constants';
@@ -752,6 +754,8 @@ export function PatientDashboard() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { language, t } = useLanguageStore();
+  const dashRules = useDashboardConfigStore((s) => s.rules);
+  const vis = (key: string) => resolveVisibility(dashRules, user?.id, user?.role, key);
 
   const getChecklistItemText = (item: ChecklistItem) => {
     if (item.text) return item.text;
@@ -1921,6 +1925,7 @@ export function PatientDashboard() {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
       {/* 1. Welcome Banner (Integrated with Streak) */}
+      {vis('welcome_banner') && (
       <View style={[styles.welcomeCard, { backgroundColor: colors.surfaceSecondary }]}>
         <View style={styles.welcomeRow}>
           <View style={styles.welcomeText}>
@@ -1939,9 +1944,10 @@ export function PatientDashboard() {
           <Avatar uri={user?.avatar_url} name={user?.full_name || ''} size={50} />
         </View>
       </View>
+      )}
 
       {/* 2. Care Reminders Strip */}
-      {careAlerts.filter(a => !a.completed).length > 0 && (
+      {vis('care_reminders') && careAlerts.filter(a => !a.completed).length > 0 && (
         <View style={styles.alertsSectionContainer}>
           <Text style={[styles.alertsSectionTitle, { color: colors.text }]}>
             {language === 'hi' ? 'महत्वपूर्ण सूचनाएं और रिमाइंडर 🚨' : language === 'hinglish' ? 'Important Care Reminders 🚨' : 'Important Care Reminders 🚨'}
@@ -1998,6 +2004,7 @@ export function PatientDashboard() {
       )}
 
       {/* 3. Jeene Ki Wajah (Life Goal Quest Card) */}
+      {vis('life_goal_quest') && (
       <Card style={[styles.goalCard, { backgroundColor: colors.primaryFaded, borderColor: colors.primary }]}>
         <View style={styles.goalHeader}>
           <View style={{ flex: 1, marginRight: Spacing.md }}>
@@ -2040,8 +2047,10 @@ export function PatientDashboard() {
           </Text>
         </View>
       </Card>
+      )}
 
       {/* 4. Daily Wins Checklist */}
+      {vis('daily_wins') && (
       <Card style={styles.sectionCard}>
         <View style={styles.cardHeader}>
           <Text style={[styles.cardTitle, { color: colors.text }]}>{t('checklist_title')}</Text>
@@ -2123,8 +2132,10 @@ export function PatientDashboard() {
           </View>
         )}
       </Card>
+      )}
 
       {/* 5. Interactive Vitals Log & SOS Section */}
+      {vis('vitals_sos') && (<>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>{getUiText('vitals_title')}</Text>
       <Card style={styles.vitalsCard}>
         {/* Vitals Status Bar */}
@@ -2281,8 +2292,10 @@ export function PatientDashboard() {
           </Text>
         </TouchableOpacity>
       </Card>
+      </>)}
 
       {/* 6. Doctor & Caregiver Feedback notes */}
+      {vis('feedback_notes') && (<>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>{getUiText('doctor_notes_title')}</Text>
       <Card style={[styles.apptCard, { borderLeftColor: colors.primary, borderLeftWidth: 4 }]}>
         <View style={styles.notesHeader}>
@@ -2309,8 +2322,10 @@ export function PatientDashboard() {
           </View>
         )}
       </Card>
+      </>)}
 
       {/* 7. My Life Goals Vertical Stepper Card */}
+      {vis('life_goals') && (<>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Spacing.md, marginBottom: Spacing.sm }}>
         <Text style={[styles.sectionTitle, { color: colors.text, marginVertical: 0 }]}>{getUiText('journey_title')}</Text>
         <TouchableOpacity
@@ -2527,6 +2542,7 @@ export function PatientDashboard() {
           })()
         )}
       </Card>
+      </>)}
 
       {/* 8. Prescription Parcha Scan Assistant */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>{getUiText('prescription_title')}</Text>

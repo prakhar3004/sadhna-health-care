@@ -6,46 +6,47 @@ export const APP_TAGLINE = 'Connecting Care, Empowering Health';
 // ─── Color Palette ────────────────────────────────────────────
 export const Colors = {
   light: {
-    primary: '#0D9488', // Healing Teal
-    primaryLight: '#14B8A6',
-    primaryDark: '#0F766E',
-    primaryFaded: 'rgba(13, 148, 136, 0.08)',
-    secondary: '#FF5A79', // Sunset Rose / Vitality
-    secondaryLight: '#FFA6B9',
-    secondaryFaded: 'rgba(255, 90, 121, 0.08)',
-    accent: '#F97316', // Sunrise Orange / Optimism
-    accentLight: '#FB923C',
-    accentFaded: 'rgba(249, 115, 22, 0.08)',
-    success: '#10B981', // Vibrant Emerald
-    successFaded: 'rgba(16, 185, 129, 0.08)',
-    warning: '#FB923C',
+    // "Aasha" (Hope) — a warm, healing, uplifting palette for chronic-care users.
+    primary: '#0E9F8E', // Healing Teal (calm, trust, renewal)
+    primaryLight: '#19B8A6',
+    primaryDark: '#0A7A6D',
+    primaryFaded: 'rgba(14, 159, 142, 0.10)',
+    secondary: '#F76C7D', // Warm Rose (vitality, warmth)
+    secondaryLight: '#FF9AA8',
+    secondaryFaded: 'rgba(247, 108, 125, 0.10)',
+    accent: '#F59E0B', // Golden Amber (hope, optimism, sunrise)
+    accentLight: '#FBBF24',
+    accentFaded: 'rgba(245, 158, 11, 0.12)',
+    success: '#10B981', // Vibrant Emerald (growth)
+    successFaded: 'rgba(16, 185, 129, 0.10)',
+    warning: '#F59E0B',
     error: '#EF4444',
-    errorFaded: 'rgba(239, 68, 68, 0.08)',
+    errorFaded: 'rgba(239, 68, 68, 0.10)',
 
-    // Surfaces (Comforting, non-sterile warm tones)
-    background: '#FDFBF7', // Warm Ivory
+    // Surfaces (comforting warm tones — non-clinical, hopeful)
+    background: '#FBF8F3', // Warm Ivory
     surface: '#FFFFFF',
     surfaceElevated: '#FFFFFF',
-    surfaceSecondary: '#FAF6F0', // Warm Cream
+    surfaceSecondary: '#F4EEE6', // Warm Cream
 
-    // Text (Softer slate blue instead of stark dark)
-    text: '#1A2238',
-    textSecondary: '#4A5568',
-    textTertiary: '#8A95A5',
+    // Text (gentle slate-ink, never harsh black)
+    text: '#1F2733',
+    textSecondary: '#566070',
+    textTertiary: '#94A0B0',
     textInverse: '#FFFFFF',
 
-    // Borders
-    border: '#F1ECE4',
-    borderLight: '#FAF6F0',
-    divider: '#F1ECE4',
+    // Borders (soft, warm)
+    border: '#ECE5DB',
+    borderLight: '#F4EEE6',
+    divider: '#EFE8DE',
 
     // Tab bar
-    tabIconDefault: '#8A95A5',
-    tabIconSelected: '#0D9488',
+    tabIconDefault: '#94A0B0',
+    tabIconSelected: '#0E9F8E',
 
-    // Shadows
-    shadow: 'rgba(74, 85, 104, 0.04)',
-    shadowMedium: 'rgba(74, 85, 104, 0.08)',
+    // Shadows (soft, warm-tinted)
+    shadow: 'rgba(31, 39, 51, 0.05)',
+    shadowMedium: 'rgba(31, 39, 51, 0.10)',
   },
   dark: {
     primary: '#14B8A6', // Mint Teal
@@ -92,7 +93,7 @@ export const Colors = {
 };
 
 // ─── Role Configuration ───────────────────────────────────────
-export type UserRole = 'doctor' | 'caregiver' | 'patient';
+export type UserRole = 'doctor' | 'caregiver' | 'patient' | 'admin';
 
 export const RoleConfig: Record<UserRole, {
   label: string;
@@ -129,6 +130,15 @@ export const RoleConfig: Record<UserRole, {
     fadedColor: 'rgba(13, 148, 136, 0.1)',
     emoji: '🟢',
     description: 'Health Seeker',
+  },
+  admin: {
+    label: 'Admin',
+    icon: 'shield-checkmark',
+    color: '#DC2626',
+    lightColor: '#EF4444',
+    fadedColor: 'rgba(220, 38, 38, 0.1)',
+    emoji: '🛡️',
+    description: 'Platform Administrator',
   },
 };
 

@@ -360,33 +360,57 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         },
       });
 
-      if (error) throw error;
-
-      if (data.user) {
-        // Build local Profile state based on sign up metadata
-        const newUserProfile: Profile = {
-          id: data.user.id,
-          role: role,
-          full_name: fullName,
-          username: fullName.toLowerCase().replace(/\s+/g, '.'),
-          avatar_url: null,
-          bio: null,
-          specialization: null,
-          license_number: null,
-          experience_years: null,
-          location: null,
-          phone: null,
-          is_verified: false,
-          is_online: true,
-          followers_count: 0,
-          following_count: 0,
-          posts_count: 0,
-          created_at: data.user.created_at,
-          updated_at: new Date().toISOString(),
-        };
-        saveLocalSession(newUserProfile);
-        set({ user: newUserProfile, isAuthenticated: true, isLoading: false });
+      if (error) {
+        // Friendlier message for the most common signup failure.
+        if (/already registered|already exists|user already/i.test(error.message)) {
+          throw new Error('This email is already registered. Please sign in instead.');
+        }
+        throw error;
       }
+
+      // When "Confirm email" is enabled in Supabase, signUp returns a user but
+      // NO session — every later insert would run as anon and silently fail RLS.
+      // Try an immediate sign-in; if that still yields no session, the account
+      // exists but must be email-confirmed before it can be used.
+      let session = data.session;
+      if (!session && data.user) {
+        const { data: signInData } = await supabase.auth.signInWithPassword({ email, password });
+        session = signInData.session ?? null;
+      }
+
+      if (!session) {
+        set({ isLoading: false });
+        throw new Error(
+          'Account created. Please confirm your email to continue — or ask the admin to disable email confirmation.'
+        );
+      }
+
+      const authUser = session.user;
+      // Build local Profile state based on sign up metadata. The DB trigger
+      // (handle_new_user) creates the real row; profile-setup completes it.
+      const newUserProfile: Profile = {
+        id: authUser.id,
+        role: role,
+        full_name: fullName,
+        username: fullName.toLowerCase().replace(/\s+/g, '.'),
+        avatar_url: null,
+        bio: null,
+        specialization: null,
+        license_number: null,
+        experience_years: null,
+        location: null,
+        phone: null,
+        is_verified: false,
+        is_online: true,
+        followers_count: 0,
+        following_count: 0,
+        posts_count: 0,
+        created_at: authUser.created_at,
+        updated_at: new Date().toISOString(),
+        is_profile_complete: false,
+      };
+      saveLocalSession(newUserProfile);
+      set({ user: newUserProfile, isAuthenticated: true, isLoading: false });
     } catch (err) {
       set({ isLoading: false });
       throw err;
