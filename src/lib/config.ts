@@ -29,5 +29,21 @@ export const isSupabaseConfigured = (): boolean => {
   );
 };
 
-/** Force isDemoMode to always be false to use the live Supabase backend only. */
-export const isDemoMode = (): boolean => false;
+let activeUserId: string | null = null;
+let activeUserEmail: string | null = null;
+
+export const setActiveUserForDemo = (id: string | null, email: string | null) => {
+  activeUserId = id;
+  activeUserEmail = email;
+};
+
+/**
+ * Returns true if Supabase is not configured, or if the active user is a demo user.
+ * This ensures demo logins work seamlessly even in live production builds.
+ */
+export const isDemoMode = (): boolean => {
+  if (!isSupabaseConfigured()) return true;
+  if (activeUserId === '1' || activeUserId === '2' || activeUserId === '3') return true;
+  if (activeUserEmail?.toLowerCase().endsWith('@test.com')) return true;
+  return false;
+};
