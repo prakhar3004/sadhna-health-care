@@ -1999,7 +1999,7 @@ export function PatientDashboard() {
       {/* 3. Jeene Ki Wajah (Life Goal Quest Card) */}
       <Card style={[styles.goalCard, { backgroundColor: colors.primaryFaded, borderColor: colors.primary }]}>
         <View style={styles.goalHeader}>
-          <View>
+          <View style={{ flex: 1, marginRight: Spacing.md }}>
             <Text style={[styles.goalTitleTag, { color: colors.primary }]}>
               {getUiText('wajah_title')}
             </Text>
@@ -4275,7 +4275,6 @@ const styles = StyleSheet.create({
   goalMainText: {
     fontSize: FontSize.lg,
     fontWeight: '800',
-    maxWidth: 200,
     lineHeight: 22,
   },
   editGoalBtn: {
