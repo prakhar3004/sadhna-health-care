@@ -50,16 +50,6 @@ export default function LoginScreen() {
     router.replace('/(tabs)');
   };
 
-  const handleQuickLogin = async (role: string) => {
-    const emails: Record<string, string> = {
-      doctor: 'doctor@test.com',
-      caregiver: 'caregiver@test.com',
-      patient: 'patient@test.com',
-    };
-    await login(emails[role], 'password');
-    router.replace('/(tabs)');
-  };
-
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
@@ -134,36 +124,6 @@ export default function LoginScreen() {
               </Text>
               <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
                 <Text style={[styles.registerLink, { color: colors.primary }]}>{t('sign_up_link')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Quick Login for Demo */}
-          <View style={[styles.quickLoginSection]}>
-            <Text style={[styles.quickLoginTitle, { color: colors.textTertiary }]}>
-              ── Quick Demo Login ──
-            </Text>
-            <View style={styles.quickLoginButtons}>
-              <TouchableOpacity
-                style={[styles.quickLoginBtn, { backgroundColor: '#6366F1' + '15', borderColor: '#6366F1' + '30' }]}
-                onPress={() => handleQuickLogin('doctor')}
-              >
-                <Ionicons name="medkit" size={20} color="#6366F1" />
-                <Text style={[styles.quickLoginBtnText, { color: '#6366F1' }]}>Doctor</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.quickLoginBtn, { backgroundColor: '#F59E0B' + '15', borderColor: '#F59E0B' + '30' }]}
-                onPress={() => handleQuickLogin('caregiver')}
-              >
-                <Ionicons name="heart" size={20} color="#F59E0B" />
-                <Text style={[styles.quickLoginBtnText, { color: '#F59E0B' }]}>Caregiver</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.quickLoginBtn, { backgroundColor: '#0D9488' + '15', borderColor: '#0D9488' + '30' }]}
-                onPress={() => handleQuickLogin('patient')}
-              >
-                <Ionicons name="person" size={20} color="#0D9488" />
-                <Text style={[styles.quickLoginBtnText, { color: '#0D9488' }]}>Patient</Text>
               </TouchableOpacity>
             </View>
           </View>

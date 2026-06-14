@@ -18,8 +18,7 @@ export const SUPABASE_ANON_KEY = rawAnonKey || PLACEHOLDER_ANON_KEY;
 
 /**
  * True only when BOTH credentials are present and are not the shipped
- * placeholders. When false the app runs fully on-device (mock auth +
- * AsyncStorage persistence) so it stays usable without a backend.
+ * placeholders.
  */
 export const isSupabaseConfigured = (): boolean => {
   return (
@@ -30,15 +29,5 @@ export const isSupabaseConfigured = (): boolean => {
   );
 };
 
-let activeUserId: string | null = null;
-
-export const setActiveUserIdForDemo = (id: string | null) => {
-  activeUserId = id;
-};
-
-/** Inverse of {@link isSupabaseConfigured}: local/demo mode with no live backend. */
-export const isDemoMode = (): boolean => {
-  if (!isSupabaseConfigured()) return true;
-  if (activeUserId === '1' || activeUserId === '2' || activeUserId === '3') return true;
-  return false;
-};
+/** Force isDemoMode to always be false to use the live Supabase backend only. */
+export const isDemoMode = (): boolean => false;
