@@ -1,6 +1,6 @@
 // Sadhna Health Care — PostCard Component
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Share } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Share, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useThemeColors } from '@/src/hooks/useTheme';
@@ -8,6 +8,8 @@ import { Avatar } from '@/src/components/ui/Avatar';
 import { RoleBadge } from '@/src/components/ui/RoleBadge';
 import { Post } from '@/src/types';
 import { useLanguageStore } from '@/src/store/languageStore';
+import { useAuthStore } from '@/src/store/authStore';
+import { PostsService } from '@/src/services/postsService';
 import { translatePost, getLanguageName } from '@/src/utils/postTranslator';
 import { PostTypeConfig, ReactionType, ReactionConfig } from '@/src/utils/constants';
 import { formatRelativeTime, formatCount } from '@/src/utils/helpers';
@@ -25,12 +27,21 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
   const colors = useThemeColors();
   const router = useRouter();
   const language = useLanguageStore((state) => state.language);
+  const currentUser = useAuthStore((s) => s.user);
+
   const [userReaction, setUserReaction] = useState<ReactionType | null>(post.user_reaction || null);
   const [reactions, setReactions] = useState<Record<ReactionType, number>>(
     post.reactions || { himmat: 0, support: 0, celebrate: 0, helpful: 0, love: 0 }
   );
   const [showReactions, setShowReactions] = useState(false);
   const [bookmarked, setBookmarked] = useState(post.is_bookmarked);
+
+  // Repost / Quote Post States
+  const [reposted, setReposted] = useState(false);
+  const [showRepostModal, setShowRepostModal] = useState(false);
+  const [showQuoteInputModal, setShowQuoteInputModal] = useState(false);
+  const [quoteComment, setQuoteComment] = useState('');
+  const [reposting, setReposting] = useState(false);
 
   // Post translation states
   const [isTranslated, setIsTranslated] = useState(false);
@@ -89,6 +100,51 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
       });
     } catch (error) {
       console.warn('Share error:', error);
+    }
+  };
+
+  const handleRepostPress = () => {
+    setShowRepostModal(true);
+  };
+
+  const handleInstantRepost = async () => {
+    if (!currentUser) return;
+    setReposting(true);
+    setShowRepostModal(false);
+    try {
+      const repostInput = {
+        content: JSON.stringify({ repost_of_id: post.id, comment: '' }),
+        post_type: 'repost' as const,
+        visibility: 'public' as const,
+      };
+      await PostsService.createPost(currentUser, repostInput);
+      setReposted(true);
+    } catch (e) {
+      console.warn('Failed to repost:', e);
+    } finally {
+      setReposting(false);
+    }
+  };
+
+  const handleQuotePostSubmit = async () => {
+    const text = quoteComment.trim();
+    if (!text || !currentUser) return;
+    setReposting(true);
+    setShowQuoteInputModal(false);
+    setQuoteComment('');
+    try {
+      const quoteInput = {
+        content: JSON.stringify({ repost_of_id: post.id, comment: text }),
+        post_type: 'repost' as const,
+        visibility: 'public' as const,
+      };
+      await PostsService.createPost(currentUser, quoteInput);
+      setReposted(true);
+    } catch (e) {
+      console.warn('Failed to quote post:', e);
+      setQuoteComment(text);
+    } finally {
+      setReposting(false);
     }
   };
 
@@ -215,6 +271,35 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
         </TouchableOpacity>
       )}
 
+      {/* Reposted Post Nested Card */}
+      {post.post_type === 'repost' && post.reposted_post && (
+        <TouchableOpacity
+          style={[styles.nestedCard, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}
+          onPress={() => router.push(`/post/${post.reposted_post?.id}` as any)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.nestedHeader}>
+            <Avatar
+              uri={post.reposted_post.author.avatar_url}
+              name={post.reposted_post.author.full_name}
+              size={24}
+            />
+            <Text style={[styles.nestedAuthorName, { color: colors.text }]} numberOfLines={1}>
+              {post.reposted_post.author.full_name}
+            </Text>
+            {post.reposted_post.author.is_verified && (
+              <Ionicons name="checkmark-circle" size={12} color="#3B82F6" />
+            )}
+            <Text style={[styles.nestedTimestamp, { color: colors.textTertiary }]}>
+              · {formatRelativeTime(post.reposted_post.created_at)}
+            </Text>
+          </View>
+          <Text style={[styles.nestedContent, { color: colors.textSecondary }]} numberOfLines={3}>
+            {post.reposted_post.content}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Media (if any) */}
       {post.media_urls && post.media_urls.length > 0 && (
         <View style={styles.mediaContainer}>
@@ -309,6 +394,29 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
           <Text style={[styles.actionText, { color: colors.textTertiary }]}>Comment</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleRepostPress}
+          activeOpacity={0.6}
+        >
+          <Ionicons
+            name={reposted ? 'repeat' : 'repeat-outline'}
+            size={22}
+            color={reposted ? '#10B981' : colors.textTertiary}
+          />
+          <Text
+            style={[
+              styles.actionText,
+              {
+                color: reposted ? '#10B981' : colors.textTertiary,
+                fontWeight: reposted ? '700' : '500',
+              },
+            ]}
+          >
+            {reposted ? 'Reposted' : 'Repost'}
+          </Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.actionButton} onPress={handleShare} activeOpacity={0.6}>
           <Ionicons name="share-social-outline" size={20} color={colors.textTertiary} />
           <Text style={[styles.actionText, { color: colors.textTertiary }]}>Share</Text>
@@ -355,6 +463,116 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
           })}
         </View>
       )}
+
+      {/* Repost Options Modal */}
+      <Modal
+        visible={showRepostModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRepostModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowRepostModal(false)}
+        >
+          <View style={[styles.modalContent, { backgroundColor: colors.surfaceElevated || colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Share with community</Text>
+            
+            <TouchableOpacity
+              style={[styles.modalOptionBtn, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+              onPress={handleInstantRepost}
+            >
+              <Ionicons name="repeat" size={20} color="#10B981" />
+              <View>
+                <Text style={[styles.modalOptionTitle, { color: colors.text }]}>Repost</Text>
+                <Text style={[styles.modalOptionDesc, { color: colors.textSecondary }]}>Instantly share this post on your feed</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalOptionBtn}
+              onPress={() => {
+                setShowRepostModal(false);
+                setShowQuoteInputModal(true);
+              }}
+            >
+              <Ionicons name="create-outline" size={20} color={colors.primary} />
+              <View>
+                <Text style={[styles.modalOptionTitle, { color: colors.text }]}>Quote Post</Text>
+                <Text style={[styles.modalOptionDesc, { color: colors.textSecondary }]}>Add your own thoughts or comments</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalCancelBtn, { backgroundColor: colors.surfaceSecondary }]}
+              onPress={() => setShowRepostModal(false)}
+            >
+              <Text style={[styles.modalCancelText, { color: colors.text }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Quote Post Input Modal */}
+      <Modal
+        visible={showQuoteInputModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowQuoteInputModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowQuoteInputModal(false)}
+        >
+          <TouchableOpacity
+            style={[styles.quoteModalContent, { backgroundColor: colors.surfaceElevated || colors.surface, borderColor: colors.border }]}
+            activeOpacity={1}
+          >
+            <View style={styles.quoteModalHeader}>
+              <TouchableOpacity onPress={() => setShowQuoteInputModal(false)}>
+                <Text style={{ color: colors.textTertiary }}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={[styles.quoteModalTitle, { color: colors.text }]}>Quote Post</Text>
+              <TouchableOpacity
+                style={[styles.quoteSubmitBtn, { backgroundColor: quoteComment.trim() ? colors.primary : colors.surfaceSecondary }]}
+                disabled={!quoteComment.trim() || reposting}
+                onPress={handleQuotePostSubmit}
+              >
+                <Text style={[styles.quoteSubmitText, { color: quoteComment.trim() ? '#FFF' : colors.textTertiary }]}>Post</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={[styles.quoteTextInput, { color: colors.text }]}
+              placeholder="Add your comment..."
+              placeholderTextColor={colors.textTertiary}
+              value={quoteComment}
+              onChangeText={setQuoteComment}
+              multiline
+              maxLength={280}
+              autoFocus
+            />
+
+            {/* Micro preview of quoted post */}
+            <View style={[styles.quotePreviewCard, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
+              <View style={styles.nestedHeader}>
+                <Avatar uri={post.author.avatar_url} name={post.author.full_name} size={20} />
+                <Text style={[styles.nestedAuthorName, { color: colors.text }]} numberOfLines={1}>
+                  {post.author.full_name}
+                </Text>
+                <Text style={[styles.nestedTimestamp, { color: colors.textTertiary }]}>
+                  · {formatRelativeTime(post.created_at)}
+                </Text>
+              </View>
+              <Text style={[styles.nestedContent, { color: colors.textSecondary }]} numberOfLines={2}>
+                {post.content}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -548,5 +766,113 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 2,
     textAlign: 'center',
+  },
+  nestedCard: {
+    marginHorizontal: Spacing.base,
+    marginBottom: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    padding: Spacing.md,
+    gap: Spacing.xs,
+  },
+  nestedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  nestedAuthorName: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  nestedTimestamp: {
+    fontSize: FontSize.xs,
+  },
+  nestedContent: {
+    fontSize: FontSize.sm,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.base,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
+  modalTitle: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  modalOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: Spacing.md,
+  },
+  modalOptionTitle: {
+    fontSize: FontSize.base,
+    fontWeight: '700',
+  },
+  modalOptionDesc: {
+    fontSize: FontSize.xs,
+    marginTop: 2,
+  },
+  modalCancelBtn: {
+    paddingVertical: 12,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    marginTop: Spacing.sm,
+  },
+  modalCancelText: {
+    fontSize: FontSize.base,
+    fontWeight: '600',
+  },
+  quoteModalContent: {
+    width: '100%',
+    maxWidth: 500,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: Spacing.lg,
+  },
+  quoteModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  quoteModalTitle: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  quoteSubmitBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  quoteSubmitText: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  quoteTextInput: {
+    fontSize: FontSize.base,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: Spacing.md,
+  },
+  quotePreviewCard: {
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    gap: Spacing.xs,
   },
 });

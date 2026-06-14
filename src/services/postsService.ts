@@ -53,7 +53,20 @@ export interface CreatePostInput {
 export const PostsService = {
   /** Reverse-chronological feed with the current user's reaction/bookmark flags. */
   async fetchFeed(currentUserId: string): Promise<Post[]> {
-    if (isDemoMode()) return getDemoFeed().map((p) => ({ ...p, reactions: { ...p.reactions } }));
+    if (isDemoMode()) {
+      const feed = getDemoFeed().map((p) => ({ ...p, reactions: { ...p.reactions } }));
+      // Hydrate reposts in demo feed
+      feed.forEach(p => {
+        if (p.post_type === 'repost') {
+          try {
+            const parsed = JSON.parse(p.content);
+            p.reposted_post = feed.find(x => x.id === parsed.repost_of_id);
+            p.content = parsed.comment || '';
+          } catch (e) {}
+        }
+      });
+      return feed;
+    }
 
     const { data: posts, error } = await supabase
       .from('posts')
@@ -73,13 +86,75 @@ export const PostsService = {
     (reacts.data || []).forEach((r: any) => reactMap.set(r.post_id, r.reaction_type));
     const bmSet = new Set((bookmarks.data || []).map((b: any) => b.post_id));
 
-    return (posts || []).map((p) => mapPostRow(p, reactMap.get(p.id) || null, bmSet.has(p.id)));
+    const mapped = (posts || []).map((p) => mapPostRow(p, reactMap.get(p.id) || null, bmSet.has(p.id)));
+
+    // Hydrate reposts
+    const repostOfIds: string[] = [];
+    mapped.forEach(p => {
+      if (p.post_type === 'repost') {
+        try {
+          const parsed = JSON.parse(p.content);
+          if (parsed && parsed.repost_of_id) {
+            repostOfIds.push(parsed.repost_of_id);
+          }
+        } catch (e) {}
+      }
+    });
+
+    if (repostOfIds.length > 0) {
+      // Fetch all referenced posts
+      const { data: originalPostsData, error: origError } = await supabase
+        .from('posts')
+        .select('*, author:profiles!posts_author_id_fkey(*)')
+        .in('id', repostOfIds);
+
+      if (!origError && originalPostsData) {
+        // Fetch reactions and bookmarks for these original posts to set correct flags
+        const [origReacts, origBookmarks] = await Promise.all([
+          supabase.from('post_reactions').select('post_id, reaction_type').eq('user_id', currentUserId).in('post_id', repostOfIds),
+          supabase.from('bookmarks').select('post_id').eq('user_id', currentUserId).in('post_id', repostOfIds),
+        ]);
+        const origReactMap = new Map<string, ReactionType>();
+        (origReacts.data || []).forEach((r: any) => origReactMap.set(r.post_id, r.reaction_type));
+        const origBmSet = new Set((origBookmarks.data || []).map((b: any) => b.post_id));
+
+        const originalPostsMap = new Map<string, Post>();
+        originalPostsData.forEach(row => {
+          originalPostsMap.set(row.id, mapPostRow(row, origReactMap.get(row.id) || null, origBmSet.has(row.id)));
+        });
+
+        // Hydrate each reposted post in the mapped feed
+        mapped.forEach(p => {
+          if (p.post_type === 'repost') {
+            try {
+              const parsed = JSON.parse(p.content);
+              p.reposted_post = originalPostsMap.get(parsed.repost_of_id);
+              p.content = parsed.comment || '';
+            } catch (e) {}
+          }
+        });
+      }
+    }
+
+    return mapped;
   },
 
   async fetchPost(postId: string, currentUserId: string): Promise<Post | null> {
     if (isDemoMode()) {
       const found = getDemoFeed().find((p) => p.id === postId);
-      return found ? { ...found, reactions: { ...found.reactions } } : null;
+      if (!found) return null;
+      const post = { ...found, reactions: { ...found.reactions } };
+      if (post.post_type === 'repost') {
+        try {
+          const parsed = JSON.parse(post.content);
+          const orig = getDemoFeed().find(x => x.id === parsed.repost_of_id);
+          if (orig) {
+            post.reposted_post = { ...orig, reactions: { ...orig.reactions } };
+            post.content = parsed.comment || '';
+          }
+        } catch (e) {}
+      }
+      return post;
     }
 
     const { data, error } = await supabase
@@ -94,7 +169,23 @@ export const PostsService = {
       supabase.from('post_reactions').select('reaction_type').eq('post_id', postId).eq('user_id', currentUserId).maybeSingle(),
       supabase.from('bookmarks').select('post_id').eq('post_id', postId).eq('user_id', currentUserId).maybeSingle(),
     ]);
-    return mapPostRow(data, (reaction.data?.reaction_type as ReactionType) || null, !!bookmark.data);
+    const post = mapPostRow(data, (reaction.data?.reaction_type as ReactionType) || null, !!bookmark.data);
+
+    // Hydrate repost in single fetch
+    if (post.post_type === 'repost') {
+      try {
+        const parsed = JSON.parse(post.content);
+        if (parsed && parsed.repost_of_id) {
+          const origPost = await this.fetchPost(parsed.repost_of_id, currentUserId);
+          if (origPost) {
+            post.reposted_post = origPost;
+            post.content = parsed.comment || '';
+          }
+        }
+      } catch (e) {}
+    }
+
+    return post;
   },
 
   async createPost(author: Profile, input: CreatePostInput): Promise<Post> {
@@ -115,6 +206,16 @@ export const PostsService = {
         is_bookmarked: false,
         created_at: new Date().toISOString(),
       };
+      if (post.post_type === 'repost') {
+        try {
+          const parsed = JSON.parse(post.content);
+          const orig = getDemoFeed().find(x => x.id === parsed.repost_of_id);
+          if (orig) {
+            post.reposted_post = { ...orig, reactions: { ...orig.reactions } };
+            post.content = parsed.comment || '';
+          }
+        } catch (e) {}
+      }
       getDemoFeed().unshift(post);
       return post;
     }
@@ -131,7 +232,19 @@ export const PostsService = {
       .select('*, author:profiles!posts_author_id_fkey(*)')
       .single();
     if (error) throw error;
-    return mapPostRow(data, null, false);
+    
+    const post = mapPostRow(data, null, false);
+    if (post.post_type === 'repost') {
+      try {
+        const parsed = JSON.parse(post.content);
+        const orig = await this.fetchPost(parsed.repost_of_id, author.id);
+        if (orig) {
+          post.reposted_post = orig;
+          post.content = parsed.comment || '';
+        }
+      } catch (e) {}
+    }
+    return post;
   },
 
   /** Set or clear the current user's reaction on a post (null = remove). */

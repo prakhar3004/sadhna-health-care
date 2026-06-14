@@ -42,8 +42,5 @@ export const setActiveUserForDemo = (id: string | null, email: string | null) =>
  * This ensures demo logins work seamlessly even in live production builds.
  */
 export const isDemoMode = (): boolean => {
-  if (!isSupabaseConfigured()) return true;
-  if (activeUserId === '1' || activeUserId === '2' || activeUserId === '3') return true;
-  if (activeUserEmail?.toLowerCase().endsWith('@test.com')) return true;
-  return false;
+  return !isSupabaseConfigured();
 };

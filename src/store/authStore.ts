@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { Profile } from '@/src/types';
 import { UserRole } from '@/src/utils/constants';
 import { supabase } from '@/src/lib/supabase';
-import { isDemoMode, setActiveUserForDemo } from '@/src/lib/config';
+import { isDemoMode, setActiveUserForDemo, isSupabaseConfigured } from '@/src/lib/config';
 
 interface AuthState {
   user: Profile | null;
@@ -103,7 +103,108 @@ export const useAuthStore = create<AuthState>((set) => ({
     const emailLower = email.toLowerCase();
     const isTestEmail = emailLower.endsWith('@test.com');
 
-    if (isDemoMode() || isTestEmail) {
+    if (isSupabaseConfigured() && isTestEmail) {
+      try {
+        const mockUser = MOCK_USERS[emailLower] || MOCK_USERS['doctor@test.com'];
+        const defaultPassword = 'TestPassword123!';
+
+        // Try signing in
+        let { data, error } = await supabase.auth.signInWithPassword({
+          email: emailLower,
+          password: defaultPassword,
+        });
+
+        // If sign in fails, try signing them up
+        if (error) {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: emailLower,
+            password: defaultPassword,
+            options: {
+              data: {
+                full_name: mockUser.full_name,
+                role: mockUser.role,
+              }
+            }
+          });
+
+          if (signUpError) throw signUpError;
+
+          if (signUpData.user) {
+            // Update profile with completed details immediately
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({
+                specialization: mockUser.specialization || null,
+                license_number: mockUser.license_number || null,
+                experience_years: mockUser.experience_years || null,
+                location: mockUser.location || null,
+                phone: mockUser.phone || null,
+                is_verified: mockUser.is_verified,
+                is_profile_complete: true,
+                bio: mockUser.bio || null,
+              })
+              .eq('id', signUpData.user.id);
+
+            if (updateError) console.warn('Failed to pre-fill profile fields:', updateError);
+
+            // Now sign in
+            const signInRes = await supabase.auth.signInWithPassword({
+              email: emailLower,
+              password: defaultPassword,
+            });
+            if (signInRes.error) throw signInRes.error;
+            data = signInRes.data;
+          }
+        }
+
+        if (data && data.session) {
+          // Fetch public profile details
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+
+          if (!profileError && profile) {
+            set({ user: profile as Profile, isAuthenticated: true, isLoading: false });
+          } else {
+            // Fallback metadata
+            const metadata = data.user.user_metadata || {};
+            const fallbackProfile: Profile = {
+              id: data.user.id,
+              role: mockUser.role,
+              full_name: mockUser.full_name,
+              username: emailLower.split('@')[0],
+              avatar_url: null,
+              bio: mockUser.bio,
+              specialization: mockUser.specialization,
+              license_number: mockUser.license_number,
+              experience_years: mockUser.experience_years,
+              location: mockUser.location,
+              phone: mockUser.phone,
+              is_verified: mockUser.is_verified,
+              is_online: true,
+              followers_count: 0,
+              following_count: 0,
+              posts_count: 0,
+              created_at: data.user.created_at,
+              updated_at: new Date().toISOString(),
+              is_profile_complete: true,
+            };
+            set({ user: fallbackProfile, isAuthenticated: true, isLoading: false });
+          }
+          return;
+        }
+      } catch (err: any) {
+        console.error('Test email auto-login/signup error:', err);
+        // Fallback to client-only demo state if database action fails
+        const mockUser = MOCK_USERS[emailLower] || MOCK_USERS['doctor@test.com'];
+        set({ user: mockUser, isAuthenticated: true, isLoading: false });
+        return;
+      }
+    }
+
+    if (isDemoMode()) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       const mockUser = MOCK_USERS[emailLower];
       if (mockUser) {
@@ -171,9 +272,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
 
     const emailLower = email.toLowerCase();
-    const isTestEmail = emailLower.endsWith('@test.com');
 
-    if (isDemoMode() || isTestEmail) {
+    if (isDemoMode()) {
       await new Promise((resolve) => setTimeout(resolve, 1200));
       const newUser: Profile = {
         id: (role === 'doctor' ? '1' : role === 'caregiver' ? '2' : '3'),

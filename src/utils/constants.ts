@@ -143,7 +143,8 @@ export type PostType =
   | 'doctor_tip'
   | 'awareness'
   | 'caregiver_insight'
-  | 'event_ama';
+  | 'event_ama'
+  | 'repost';
 
 export const PostTypeConfig: Record<PostType, {
   label: string;
@@ -153,6 +154,14 @@ export const PostTypeConfig: Record<PostType, {
   allowedRoles: ('doctor' | 'caregiver' | 'patient')[];
   description: string;
 }> = {
+  repost: {
+    label: 'Repost',
+    icon: 'repeat-outline',
+    color: '#10B981',
+    emoji: '🔁',
+    allowedRoles: ['doctor', 'caregiver', 'patient'],
+    description: 'Shared post from another user',
+  },
   daily_win: {
     label: 'Daily Win',
     icon: 'checkmark-circle-outline',

@@ -45,6 +45,7 @@ export interface Post {
   is_liked: boolean;
   is_bookmarked: boolean;
   created_at: string;
+  reposted_post?: Post;
 }
 
 // ─── Comment ──────────────────────────────────────────────────
