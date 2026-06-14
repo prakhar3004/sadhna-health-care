@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -68,10 +69,12 @@ export default function LoginScreen() {
 
           {/* Hero Section */}
           <View style={styles.hero}>
-            <View style={[styles.logoContainer, { backgroundColor: colors.primaryFaded }]}>
-              <Ionicons name="medical" size={40} color={colors.primary} />
-            </View>
-            <Text style={[styles.appName, { color: colors.text }]}>{t('app_name')}</Text>
+            <Image
+              source={require('../../assets/images/logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+            <Text style={[styles.appName, { color: colors.text, marginTop: Spacing.md }]}>{t('app_name')}</Text>
             <Text style={[styles.tagline, { color: colors.textSecondary }]}>{t('login_subtitle')}</Text>
           </View>
 
@@ -152,13 +155,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing['3xl'],
     marginBottom: Spacing['2xl'],
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.base,
+  logoImage: {
+    width: 140,
+    height: 140,
+    borderRadius: 28,
   },
   appName: {
     fontSize: FontSize['3xl'],

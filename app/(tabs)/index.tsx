@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -250,9 +251,11 @@ export default function HomeFeedScreen() {
       {/* App Header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
         <View style={styles.headerLeft}>
-          <View style={[styles.logoMini, { backgroundColor: colors.primaryFaded }]}>
-            <Ionicons name="medical" size={20} color={colors.primary} />
-          </View>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.logoMiniImage}
+            resizeMode="contain"
+          />
           <Text style={[styles.headerTitle, { color: colors.text }]}>{t('app_name')}</Text>
         </View>
         <View style={styles.headerRight}>
@@ -462,12 +465,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  logoMini: {
+  logoMiniImage: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: FontSize.xl,
