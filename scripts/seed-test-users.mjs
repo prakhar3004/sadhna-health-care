@@ -51,6 +51,16 @@ UPDATE public.profiles SET username='rahul.v', bio='Managing diabetes and stayin
   location='Bangalore, Karnataka', phone='+91 76543 21098',
   is_profile_complete=TRUE, chronic_condition='Diabetes'
   WHERE id='a71e0410-0000-0000-0000-000000000003';
+
+-- 4. GoTrue requires these token columns to be '' (not NULL) for SQL-seeded
+--    users, else sign-in fails with "Invalid login credentials".
+UPDATE auth.users SET
+  instance_id = '00000000-0000-0000-0000-000000000000',
+  confirmation_token = COALESCE(confirmation_token, ''),
+  recovery_token = COALESCE(recovery_token, ''),
+  email_change = COALESCE(email_change, ''),
+  email_change_token_new = COALESCE(email_change_token_new, '')
+WHERE email IN ('doctor@test.com', 'caregiver@test.com', 'patient@test.com');
 `;
 
 const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } });

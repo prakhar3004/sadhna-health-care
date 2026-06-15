@@ -671,7 +671,12 @@ USING (follower_id = auth.uid()) WITH CHECK (follower_id = auth.uid());
 DROP POLICY IF EXISTS "Participants read conversations" ON public.conversations;
 CREATE POLICY "Participants read conversations"
 ON public.conversations FOR SELECT TO authenticated
-USING (public.is_conversation_participant(id, auth.uid()));
+USING (
+  -- The creator can always read (needed for INSERT ... RETURNING right after
+  -- creating a conversation, before participant rows exist), plus participants.
+  created_by = auth.uid()
+  OR public.is_conversation_participant(id, auth.uid())
+);
 
 DROP POLICY IF EXISTS "Users create conversations" ON public.conversations;
 CREATE POLICY "Users create conversations"
@@ -798,6 +803,14 @@ CREATE TABLE IF NOT EXISTS public.stories (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '24 hours')
 );
+
+-- Point the FK at public.profiles (not auth.users) so PostgREST can embed the
+-- author via `profiles!stories_user_id_fkey`. profiles.id already references
+-- auth.users(id), so referential integrity is preserved.
+ALTER TABLE public.stories DROP CONSTRAINT IF EXISTS stories_user_id_fkey;
+ALTER TABLE public.stories
+  ADD CONSTRAINT stories_user_id_fkey FOREIGN KEY (user_id)
+  REFERENCES public.profiles(id) ON DELETE CASCADE;
 
 ALTER TABLE public.stories ENABLE ROW LEVEL SECURITY;
 

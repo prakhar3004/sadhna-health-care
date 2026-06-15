@@ -45,6 +45,16 @@ UPDATE public.profiles p
        updated_at = now()
   FROM auth.users u
  WHERE p.id = u.id AND u.email = '${ADMIN_EMAIL}';
+
+-- GoTrue requires these token columns to be '' (not NULL) for SQL-seeded users,
+-- otherwise sign-in fails with "Invalid login credentials".
+UPDATE auth.users SET
+  instance_id = '00000000-0000-0000-0000-000000000000',
+  confirmation_token = COALESCE(confirmation_token, ''),
+  recovery_token = COALESCE(recovery_token, ''),
+  email_change = COALESCE(email_change, ''),
+  email_change_token_new = COALESCE(email_change_token_new, '')
+WHERE email = '${ADMIN_EMAIL}';
 `;
 
 const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } });
