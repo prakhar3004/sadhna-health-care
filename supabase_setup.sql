@@ -334,6 +334,20 @@ CREATE POLICY "Owners can update their own emergency requests"
 ON public.emergency_requests FOR UPDATE TO authenticated
 USING (auth.uid() = patient_id) WITH CHECK (auth.uid() = patient_id);
 
+-- Doctors (and admins) verify/reject requests — without this the doctor's Seva
+-- "Verify Case" action is silently blocked by RLS (0 rows updated).
+DROP POLICY IF EXISTS "Doctors and admins verify emergency requests" ON public.emergency_requests;
+CREATE POLICY "Doctors and admins verify emergency requests"
+ON public.emergency_requests FOR UPDATE TO authenticated
+USING (
+  public.is_admin(auth.uid())
+  OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'doctor')
+)
+WITH CHECK (
+  public.is_admin(auth.uid())
+  OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'doctor')
+);
+
 -- Harden the donation column: block direct client writes to raised_amount.
 -- (The SECURITY DEFINER donate_to_request function still updates it.)
 REVOKE UPDATE (raised_amount) ON public.emergency_requests FROM authenticated, anon;
