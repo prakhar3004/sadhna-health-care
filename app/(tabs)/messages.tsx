@@ -181,7 +181,11 @@ export default function MessagesScreen() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>{trans.messages}</Text>
-        <TouchableOpacity style={[styles.newChatButton, { backgroundColor: colors.primaryFaded }]}>
+        <TouchableOpacity
+          style={[styles.newChatButton, { backgroundColor: colors.primaryFaded }]}
+          onPress={() => router.push('/(tabs)/search' as any)}
+          activeOpacity={0.7}
+        >
           <Ionicons name="create-outline" size={20} color={colors.primary} />
         </TouchableOpacity>
       </View>

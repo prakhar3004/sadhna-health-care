@@ -341,6 +341,18 @@ export const PostsService = {
       created_at: data.created_at,
     };
   },
+
+  /** Delete a post (author via RLS, or admin). Also drops it from the demo feed. */
+  async deletePost(postId: string): Promise<void> {
+    if (isDemoMode()) {
+      const feed = getDemoFeed();
+      const i = feed.findIndex((p) => p.id === postId);
+      if (i >= 0) feed.splice(i, 1);
+      return;
+    }
+    const { error } = await supabase.from('posts').delete().eq('id', postId);
+    if (error) throw error;
+  },
 };
 
 // Demo comment store keyed by post id.

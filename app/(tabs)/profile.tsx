@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -521,13 +522,19 @@ function ActionRow({
   icon,
   label,
   colors,
+  onPress,
 }: {
   icon: string;
   label: string;
   colors: any;
+  onPress?: () => void;
 }) {
   return (
-    <TouchableOpacity style={actionRowStyles.row} activeOpacity={0.6}>
+    <TouchableOpacity
+      style={actionRowStyles.row}
+      activeOpacity={0.6}
+      onPress={onPress || (() => Alert.alert(label, 'This feature is coming soon.'))}
+    >
       <Ionicons name={icon as any} size={20} color={colors.textSecondary} />
       <Text style={[actionRowStyles.label, { color: colors.text }]}>{label}</Text>
       <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />

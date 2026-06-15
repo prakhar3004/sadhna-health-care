@@ -6,8 +6,10 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/src/components/ui/Avatar';
 import { RoleBadge } from '@/src/components/ui/RoleBadge';
@@ -16,7 +18,8 @@ import { useThemeColors } from '@/src/hooks/useTheme';
 import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
 import { AppointmentsService } from '@/src/services/appointmentsService';
-import { Appointment } from '@/src/types';
+import { ChatService } from '@/src/services/chatService';
+import { Appointment, Profile } from '@/src/types';
 import { formatAppointmentDate, formatTime } from '@/src/utils/helpers';
 import { FontSize, Spacing, Radius } from '@/src/utils/constants';
 
@@ -247,10 +250,21 @@ const APPOINTMENT_TRANS: Record<string, Record<string, string>> = {
 
 export default function AppointmentsScreen() {
   const colors = useThemeColors();
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { language, t } = useLanguageStore();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
+
+  const handleMessage = useCallback(async (person: Profile | null) => {
+    if (!user || !person) return;
+    try {
+      const convId = await ChatService.getOrCreateDirectConversation(user.id, person.id);
+      router.push(`/chat/${convId}` as any);
+    } catch (e) {
+      Alert.alert('Error', 'Could not open the chat. Please try again.');
+    }
+  }, [user?.id]);
 
   const loadAppointments = useCallback(async () => {
     if (!user) return;
@@ -362,12 +376,20 @@ export default function AppointmentsScreen() {
         {/* Actions */}
         {(item.status === 'pending' || item.status === 'confirmed') && (
           <View style={styles.actions}>
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primaryFaded }]}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.primaryFaded }]}
+              onPress={() => handleMessage(otherPerson)}
+              activeOpacity={0.7}
+            >
               <Ionicons name="chatbubble-outline" size={16} color={colors.primary} />
               <Text style={[styles.actionBtnText, { color: colors.primary }]}>{trans.message_btn}</Text>
             </TouchableOpacity>
             {item.type === 'video_call' && item.status === 'confirmed' && (
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]}>
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+                onPress={() => Alert.alert('Video Consultation', 'Video calling is coming soon. For now, use chat to coordinate with the doctor.')}
+                activeOpacity={0.85}
+              >
                 <Ionicons name="videocam" size={16} color="#FFF" />
                 <Text style={[styles.actionBtnText, { color: '#FFF' }]}>{trans.join_call_btn}</Text>
               </TouchableOpacity>
@@ -383,7 +405,11 @@ export default function AppointmentsScreen() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>{trans.appointments_header}</Text>
-        <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.primary }]}>
+        <TouchableOpacity
+          style={[styles.addButton, { backgroundColor: colors.primary }]}
+          onPress={() => router.push('/(tabs)/search' as any)}
+          activeOpacity={0.85}
+        >
           <Ionicons name="add" size={22} color="#FFF" />
         </TouchableOpacity>
       </View>

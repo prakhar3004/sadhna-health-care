@@ -756,6 +756,8 @@ export function PatientDashboard() {
   const { language, t } = useLanguageStore();
   const dashRules = useDashboardConfigStore((s) => s.rules);
   const vis = (key: string) => resolveVisibility(dashRules, user?.id, user?.role, key);
+  const [callMuted, setCallMuted] = useState(false);
+  const [callVideoOff, setCallVideoOff] = useState(false);
 
   const getChecklistItemText = (item: ChecklistItem) => {
     if (item.text) return item.text;
@@ -4172,8 +4174,8 @@ export function PatientDashboard() {
             {/* Calling Control Buttons */}
             <View style={styles.callControlRow}>
               {/* Mute Button */}
-              <TouchableOpacity style={styles.callMuteBtn}>
-                <Ionicons name="mic-off" size={24} color="#FFF" />
+              <TouchableOpacity style={styles.callMuteBtn} onPress={() => setCallMuted((m) => !m)}>
+                <Ionicons name={callMuted ? 'mic-off' : 'mic'} size={24} color="#FFF" />
               </TouchableOpacity>
 
               {/* End Call Button */}
@@ -4185,8 +4187,8 @@ export function PatientDashboard() {
               </TouchableOpacity>
 
               {/* Video toggle button */}
-              <TouchableOpacity style={styles.callMuteBtn}>
-                <Ionicons name="videocam-off" size={24} color="#FFF" />
+              <TouchableOpacity style={styles.callMuteBtn} onPress={() => setCallVideoOff((v) => !v)}>
+                <Ionicons name={callVideoOff ? 'videocam-off' : 'videocam'} size={24} color="#FFF" />
               </TouchableOpacity>
             </View>
           </View>

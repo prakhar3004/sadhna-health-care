@@ -201,15 +201,24 @@ export default function CreatePostScreen() {
 
         {/* Attachments */}
         <View style={styles.attachments}>
-          <TouchableOpacity style={[styles.attachBtn, { backgroundColor: colors.surfaceSecondary }]}>
+          <TouchableOpacity
+            style={[styles.attachBtn, { backgroundColor: colors.surfaceSecondary }]}
+            onPress={() => Alert.alert('Add Photo', 'Photo upload is coming soon.')}
+          >
             <Ionicons name="image-outline" size={22} color={colors.primary} />
             <Text style={[styles.attachLabel, { color: colors.textSecondary }]}>Photo</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.attachBtn, { backgroundColor: colors.surfaceSecondary }]}>
+          <TouchableOpacity
+            style={[styles.attachBtn, { backgroundColor: colors.surfaceSecondary }]}
+            onPress={() => Alert.alert('Attach Document', 'Document upload is coming soon.')}
+          >
             <Ionicons name="document-outline" size={22} color={colors.primary} />
             <Text style={[styles.attachLabel, { color: colors.textSecondary }]}>Document</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.attachBtn, { backgroundColor: colors.surfaceSecondary }]}>
+          <TouchableOpacity
+            style={[styles.attachBtn, { backgroundColor: colors.surfaceSecondary }]}
+            onPress={() => Alert.alert('Add Location', 'Location tagging is coming soon.')}
+          >
             <Ionicons name="location-outline" size={22} color={colors.primary} />
             <Text style={[styles.attachLabel, { color: colors.textSecondary }]}>Location</Text>
           </TouchableOpacity>

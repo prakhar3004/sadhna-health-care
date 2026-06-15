@@ -9,6 +9,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -132,10 +133,10 @@ export default function ChatScreen() {
             </Text>
           </View>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.callBtn}>
+        <TouchableOpacity style={styles.callBtn} onPress={() => Alert.alert('Video Call', 'Video calling is coming soon.')}>
           <Ionicons name="videocam-outline" size={22} color={colors.primary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.callBtn}>
+        <TouchableOpacity style={styles.callBtn} onPress={() => Alert.alert('Voice Call', 'Voice calling is coming soon.')}>
           <Ionicons name="call-outline" size={22} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -158,7 +159,7 @@ export default function ChatScreen() {
 
         {/* Input Bar */}
         <View style={[styles.inputBar, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
-          <TouchableOpacity style={styles.attachButton}>
+          <TouchableOpacity style={styles.attachButton} onPress={() => Alert.alert('Attachments', 'Photo & file sharing is coming soon.')}>
             <Ionicons name="add-circle-outline" size={26} color={colors.primary} />
           </TouchableOpacity>
           <View style={[styles.inputContainer, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
@@ -171,7 +172,7 @@ export default function ChatScreen() {
               multiline
               maxLength={500}
             />
-            <TouchableOpacity style={styles.emojiButton}>
+            <TouchableOpacity style={styles.emojiButton} onPress={() => setMessageText((prev) => prev + '😊')}>
               <Ionicons name="happy-outline" size={22} color={colors.textTertiary} />
             </TouchableOpacity>
           </View>

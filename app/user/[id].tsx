@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -94,7 +95,13 @@ export default function UserProfileScreen() {
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.moreBtn}>
+          <TouchableOpacity
+            style={styles.moreBtn}
+            onPress={() => Alert.alert('Options', undefined, [
+              { text: 'Report user', onPress: () => Alert.alert('Reported', 'Thank you. Our team will review this profile.') },
+              { text: 'Cancel', style: 'cancel' },
+            ])}
+          >
             <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>

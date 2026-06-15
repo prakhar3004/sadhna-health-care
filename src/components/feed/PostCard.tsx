@@ -1,6 +1,6 @@
 // Sadhna Health Care — PostCard Component
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Share, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Share, Modal, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useThemeColors } from '@/src/hooks/useTheme';
@@ -35,6 +35,25 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
   );
   const [showReactions, setShowReactions] = useState(false);
   const [bookmarked, setBookmarked] = useState(post.is_bookmarked);
+  const [hidden, setHidden] = useState(false);
+
+  const handleMore = () => {
+    const isOwn = currentUser?.id === post.author_id;
+    const opts: any[] = [];
+    if (isOwn) {
+      opts.push({
+        text: 'Delete post', style: 'destructive', onPress: async () => {
+          try { await PostsService.deletePost(post.id); setHidden(true); }
+          catch (e: any) { Alert.alert('Error', e.message || 'Could not delete the post.'); }
+        },
+      });
+    } else {
+      opts.push({ text: 'Report post', onPress: () => Alert.alert('Reported', 'Thank you. Our team will review this post.') });
+    }
+    opts.push({ text: 'Share', onPress: handleShare });
+    opts.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert('Post options', undefined, opts);
+  };
 
   // Repost / Quote Post States
   const [reposted, setReposted] = useState(false);
@@ -186,6 +205,8 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
 
   const showTranslateButton = language !== 'en';
 
+  if (hidden) return null;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
       {/* Header */}
@@ -222,7 +243,7 @@ export function PostCard({ post, onReact, onComment, onBookmark, onShare }: Post
             </View>
           </View>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.moreButton}>
+        <TouchableOpacity style={styles.moreButton} onPress={handleMore} activeOpacity={0.6}>
           <Ionicons name="ellipsis-horizontal" size={20} color={colors.textTertiary} />
         </TouchableOpacity>
       </View>
