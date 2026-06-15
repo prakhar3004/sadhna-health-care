@@ -1,5 +1,6 @@
 // Sadhna Health Care — Supabase Client Configuration
 import 'react-native-url-polyfill/auto';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, isSupabaseConfigured } from '@/src/lib/config';
@@ -11,63 +12,49 @@ if (!isSupabaseConfigured()) {
   );
 }
 
-// Custom storage wrapper to prevent SSR crash in Node.js (ReferenceError: window is not defined)
+// Storage adapter. CRITICAL: React Native has NO window.localStorage — using it
+// (the old `typeof window` check) silently no-ops session storage on the APK, so
+// the user never stays authenticated and live features fail. We pick by platform:
+//   • native  → AsyncStorage (correct for the APK)
+//   • web      → window.localStorage
+//   • SSR/prerender (web build in Node, no window) → no-op, so export doesn't crash
+const isWeb = Platform.OS === 'web';
+const hasWindow = typeof window !== 'undefined' && !!(window as any).localStorage;
+const webLS = (): Storage | null => (hasWindow ? (window as any).localStorage : null);
+
 const customStorage = {
   getItem: (key: string): string | null | Promise<string | null> => {
-    if (typeof window !== 'undefined') {
-      try {
-        return window.localStorage.getItem(key);
-      } catch (err) {
-        console.error('Error reading from localStorage:', err);
-        return null;
-      }
+    if (isWeb) {
+      const ls = webLS();
+      try { return ls ? ls.getItem(key) : null; } catch { return null; }
     }
-    try {
-      return AsyncStorage.getItem(key);
-    } catch (err) {
-      console.error('Error reading from AsyncStorage:', err);
-      return null;
-    }
+    return AsyncStorage.getItem(key);
   },
   setItem: (key: string, value: string): void | Promise<void> => {
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(key, value);
-        return;
-      } catch (err) {
-        console.error('Error writing to localStorage:', err);
-        return;
-      }
+    if (isWeb) {
+      const ls = webLS();
+      try { ls?.setItem(key, value); } catch {}
+      return;
     }
-    try {
-      return AsyncStorage.setItem(key, value);
-    } catch (err) {
-      console.error('Error writing to AsyncStorage:', err);
-    }
+    return AsyncStorage.setItem(key, value);
   },
   removeItem: (key: string): void | Promise<void> => {
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.removeItem(key);
-        return;
-      } catch (err) {
-        console.error('Error removing from localStorage:', err);
-        return;
-      }
+    if (isWeb) {
+      const ls = webLS();
+      try { ls?.removeItem(key); } catch {}
+      return;
     }
-    try {
-      return AsyncStorage.removeItem(key);
-    } catch (err) {
-      console.error('Error removing from AsyncStorage:', err);
-    }
+    return AsyncStorage.removeItem(key);
   },
 };
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: customStorage,
-    autoRefreshToken: typeof window !== 'undefined', // Only refresh tokens on the client
-    persistSession: typeof window !== 'undefined', // Only persist sessions on the client
+    // Always on for a real client (native or web browser); off only during the
+    // web SSR/prerender pass where there is no window.
+    autoRefreshToken: !isWeb || hasWindow,
+    persistSession: !isWeb || hasWindow,
     detectSessionInUrl: false,
   },
 });

@@ -1,5 +1,6 @@
 // Sadhna Health Care — Auth Store (Zustand)
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Profile } from '@/src/types';
 import { UserRole } from '@/src/utils/constants';
@@ -8,10 +9,16 @@ import { isDemoMode, setActiveUserForDemo, isSupabaseConfigured } from '@/src/li
 
 const SESSION_KEY = 'sadhna_user_session';
 
+// Native must use AsyncStorage (RN has no window.localStorage); web uses localStorage.
+const webLS = (): Storage | null =>
+  Platform.OS === 'web' && typeof window !== 'undefined' && (window as any).localStorage
+    ? (window as any).localStorage
+    : null;
+
 const getLocalSession = async (): Promise<Profile | null> => {
   try {
-    const data = typeof window !== 'undefined'
-      ? window.localStorage.getItem(SESSION_KEY)
+    const data = Platform.OS === 'web'
+      ? (webLS()?.getItem(SESSION_KEY) ?? null)
       : await AsyncStorage.getItem(SESSION_KEY);
     return data ? JSON.parse(data) : null;
   } catch (err) {
@@ -22,19 +29,14 @@ const getLocalSession = async (): Promise<Profile | null> => {
 
 const saveLocalSession = async (user: Profile | null): Promise<void> => {
   try {
-    if (user) {
-      const data = JSON.stringify(user);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(SESSION_KEY, data);
-      } else {
-        await AsyncStorage.setItem(SESSION_KEY, data);
-      }
+    if (Platform.OS === 'web') {
+      const ls = webLS();
+      if (!ls) return;
+      if (user) ls.setItem(SESSION_KEY, JSON.stringify(user));
+      else ls.removeItem(SESSION_KEY);
     } else {
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem(SESSION_KEY);
-      } else {
-        await AsyncStorage.removeItem(SESSION_KEY);
-      }
+      if (user) await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(user));
+      else await AsyncStorage.removeItem(SESSION_KEY);
     }
   } catch (err) {
     console.error('Error saving local session:', err);
@@ -237,12 +239,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           return;
         }
       } catch (err: any) {
-        console.error('Test email auto-login/signup error:', err);
-        // Fallback to client-only demo state if database action fails
-        const mockUser = MOCK_USERS[emailLower] || MOCK_USERS['doctor@test.com'];
-        saveLocalSession(mockUser);
-        set({ user: mockUser, isAuthenticated: true, isLoading: false });
-        return;
+        // Do NOT silently fall back to a demo mock user here — that traps a LIVE
+        // login in demo mode (ids 1/2/3 → isDemoMode), so nothing persists to the
+        // real backend. Surface the error so the UI can show it.
+        console.error('Test email login error:', err);
+        set({ isLoading: false });
+        throw err;
       }
     }
 

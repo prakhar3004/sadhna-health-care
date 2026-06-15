@@ -10,6 +10,7 @@ import {
   Platform,
   Dimensions,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -47,8 +48,12 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!validate()) return;
-    await login(email, password);
-    router.replace('/(tabs)');
+    try {
+      await login(email, password);
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      Alert.alert('Login failed', err?.message || 'Could not sign in. Please check your details and try again.');
+    }
   };
 
   return (
